@@ -1,4 +1,5 @@
 MANIFEST
 dist
 biosci/*.pyc
+biosci/__pycache__
 
