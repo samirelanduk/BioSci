@@ -1016,13 +1016,11 @@ class Het(Residue):
         #Atoms in self
         atoms = [atom.element for atom in self.atoms if atom.element != "H"]
         self_atoms = Counter(atoms)
-        print(self_atoms)
 
 
         #Atoms in smiles
         atoms = [atom for atom in smiles.upper() if atom.isalpha() and atom != "H"]
         smiles_atoms = Counter(atoms)
-        print(smiles_atoms)
 
 
         return True if self_atoms == smiles_atoms else False
