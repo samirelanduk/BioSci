@@ -1,6 +1,7 @@
 from __future__ import print_function
 import re
 import math
+import requests
 
 PERIODIC_TABLE = {
  "H": 1.0079, "HE": 4.0026, "LI": 6.941, "BE": 9.0122, "B": 10.811, "C": 12.0107,
@@ -947,7 +948,6 @@ class Model:
 
 
 
-
 class Chain:
     """This class represents a PDB chain"""
 
@@ -1095,6 +1095,7 @@ class Site:
 
 
 
+
 class Pdb:
     VALID_CHARS = """'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ12
     34567890`-=[]\;',./~!@#$%^&*()_+{}|:"<>?'"""
@@ -1146,14 +1147,27 @@ class Pdb:
     CONNECT_RECORDS = ["CONECT"]
 
 
-    def __init__(self, f, narrate=False):
+    def __init__(self, source, narrate=False):
 
-        #Open file contents
-        try:
-            contents = f.read()
-            contents.replace("\r\n", "\n")
-        except UnicodeDecodeError:
-            raise NotValidPdbError("This file is not in plain text")
+        contents = ""
+        #Has a string or a file been provided?
+        if type(source) == str:
+            #This is a PDB code (hopefully)
+            response = requests.get(
+             "http://www.rcsb.org/pdb/files/%s.pdb" % source
+            )
+            if response.status_code == 200 and response.text[:6] == "HEADER":
+                contents = response.text
+            else:
+                raise NotValidPdbError("%s does not seem to be a valid PDB code." % source)
+
+        else:
+            #Open file contents
+            try:
+                contents = f.read()
+                contents.replace("\r\n", "\n")
+            except UnicodeDecodeError:
+                raise NotValidPdbError("This file is not in plain text")
 
 
         #Verify that the file characters are valid
