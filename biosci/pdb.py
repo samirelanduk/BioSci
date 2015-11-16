@@ -2,6 +2,7 @@ from __future__ import print_function
 import re
 import math
 import requests
+from collections import Counter
 
 PERIODIC_TABLE = {
  "H": 1.0079, "HE": 4.0026, "LI": 6.941, "BE": 9.0122, "B": 10.811, "C": 12.0107,
@@ -1009,6 +1010,22 @@ class Het(Residue):
 
     def __init__(self, atoms, anisous):
         Residue.__init__(self, atoms, anisous)
+
+
+    def match_smiles(self, smiles):
+        #Atoms in self
+        atoms = [atom.element for atom in self.atoms if atom.element != "H"]
+        self_atoms = Counter(atoms)
+        print(self_atoms)
+
+
+        #Atoms in smiles
+        atoms = [atom for atom in smiles.upper() if atom.isalpha() and atom != "H"]
+        smiles_atoms = Counter(atoms)
+        print(smiles_atoms)
+
+
+        return True if self_atoms == smiles_atoms else False
 
 
 
