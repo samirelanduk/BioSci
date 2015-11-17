@@ -1026,6 +1026,11 @@ class Het(Residue):
         return True if self_atoms == smiles_atoms else False
 
 
+    def get_bind_site(self):
+        if len(self.model.sites):
+            return sorted(self.model.sites, key = lambda k: len(k.residues), reverse=True)[0]
+
+
 
 
 class Atom:
@@ -1064,6 +1069,9 @@ class Site:
     def __init__(self, name, residues):
         self.name = name
         self.residues = residues
+        self.atoms = []
+        for residue in self.residues:
+            self.atoms += residue.atoms
 
 
 
