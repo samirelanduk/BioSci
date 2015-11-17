@@ -828,6 +828,17 @@ class CoordinateSection(Section):
             } for a in anisou]
 
 
+            #Process TERs
+            ters = [r for r in model_lines if r.name == "TER"]
+            model["termini"] = [{
+             "serial_num": int(a[6:11].strip()) if a[6:11] != "     " else None,
+             "residue_name": a[17:20].strip() if a[17:20] != "   " else None,
+             "chain": a[21] if a[21] != " " else None,
+             "residue_number": int(a[22:26].strip()) if a[22:26] != "    " else None,
+             "residue_insert": a[26] if a[26] != " " else None,
+            } for a in ters]
+
+
             #Process HETATMs
             hetatoms = [r for r in model_lines if r.name == "HETATM"]
             model["hetero_atoms"] = [{
@@ -889,7 +900,8 @@ class Model:
         for chain in chains:
             atoms = [a for a in model_dict["atoms"] if a["chain"] == chain]
             anisous = [a for a in model_dict["anisou"] if a["chain"] == chain]
-            self.chains.append(Chain(atoms, anisous))
+            terminus = [t for t in model_dict["termini"] if t["chain"] == chain][0]
+            self.chains.append(Chain(atoms, anisous, terminus))
 
 
         #Get heteroatoms
@@ -959,7 +971,7 @@ class Model:
 class Chain:
     """This class represents a PDB chain"""
 
-    def __init__(self, atoms, anisous):
+    def __init__(self, atoms, anisous, terminus):
         self.name = atoms[0]["chain"]
 
         #Get residues
@@ -978,6 +990,11 @@ class Chain:
             residue.chain = self
             self.atoms += residue.atoms
             self.mass += residue.mass
+            if residue.number == terminus["residue_number"]:
+                residue.terminus = True
+            else:
+                residue.terminus = False
+            residue.verify_self()
 
 
         #Process atoms
@@ -1017,7 +1034,7 @@ class Residue:
     RESIDUE_ATOMS = {
      "PHE": {"C": 7}, "TRP": {"C": 9, "N": 1},
       "MET": {"C": 3, "S": 1}, "ILE": {"C": 4},
-       "ASN": {"C": 3, "N": 1, "O": 1}, "THR": {"C": 2, "O": 1},
+       "ASN": {"C": 2, "N": 1, "O": 1}, "THR": {"C": 2, "O": 1},
         "HIS": {"C": 4, "N": 2}, "GLN": {"C": 3, "N": 1, "O": 1},
          "GLU": {"C": 3, "O": 2}, "ASP": {"C": 2, "O": 2},
           "TYR": {"C": 7, "O": 1}, "CYS": {"C": 1, "S": 1},
@@ -1048,9 +1065,19 @@ class Residue:
             self.mass += PERIODIC_TABLE[atom.element.upper()]
 
 
-        #Verify self
-        if self.name in RESIDUE_NAMES:
+    def verify_self(self):
+        if self.name in self.RESIDUE_NAMES:
             #This is a conventional residue
+            atom_count = Counter([a.element for a in self.atoms])
+            atom_count["C"] -= 2
+            atom_count["N"] -= 1
+            atom_count["O"] -= 1
+            atom_count = {key: atom_count[key] for key in atom_count.keys() if atom_count[key] != 0}
+            if atom_count != self.RESIDUE_ATOMS[self.name.upper()]:
+                print("Unconventional %s at %i on chain %s." %
+                 (self.name, self.number, self.chain.name))
+                print("%s != %s" % (str(atom_count), str(self.RESIDUE_ATOMS[self.name.upper()])))
+                print("")
 
 
 
