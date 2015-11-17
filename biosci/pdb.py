@@ -881,7 +881,7 @@ class ConnectSection(Section):
 class Model:
     """This class represents the structure contained within a PDB file"""
 
-    def __init__(self, model_dict, sites):
+    def __init__(self, model_dict, sites, connections):
         #Get chains
         chains = list(set([a["chain"] for a in model_dict["atoms"]]))
         self.chains = []
@@ -931,6 +931,13 @@ class Model:
         #Process atoms
         for atom in self.atoms:
             atom.model = self
+            atom.connected_atoms = []
+            for con_atom in connections.atoms:
+                if con_atom["atom_id"] == atom.number:
+                    for other_atom in con_atom["bonded_atoms"]:
+                        atom.connected_atoms.append(
+                         [a for a in self.atoms if a.number == other_atom][0]
+                        )
 
 
         #Add in sites
@@ -983,6 +990,43 @@ class Chain:
 class Residue:
     """This class represents a PDB residue"""
 
+    RESIDUE_NAMES = {
+     "phenylalanine": ("PHE", "F"), "PHE": ("phenylalanine", "F"), "F": ("phenylalanine", "PHE"),
+      "tryptophan": ("TRP", "W"), "TRP": ("tryptophan", "W"), "W": ("tryptophan", "TRP"),
+       "methionine": ("MET", "M"), "MET": ("methionine", "M"), "M": ("methionine", "MET"),
+        "isoleucine": ("ILE", "I"), "ILE": ("isoleucine", "I"), "I": ("isoleucine", "ILE"),
+         "asparagine": ("ASN", "N"), "ASN": ("asparagine", "N"), "N": ("asparagine", "ASN"),
+          "threonine": ("THR", "T"), "THR": ("threonine", "T"), "T": ("threonine", "THR"),
+           "histidine": ("HIS", "H"), "HIS": ("histidine", "H"), "H": ("histidine", "HIS"),
+            "glutamine": ("GLN", "Q"), "GLN": ("glutamine", "Q"), "Q": ("glutamine", "GLN"),
+             "glutamate": ("GLU", "E"), "GLU": ("glutamate", "E"), "E": ("glutamate", "GLU"),
+              "aspartate": ("ASP", "D"), "ASP": ("aspartate", "D"), "D": ("aspartate", "ASP"),
+               "tyrosine": ("TYR", "Y"), "TYR": ("tyrosine", "Y"), "Y": ("tyrosine", "TYR"),
+                "cysteine": ("CYS", "C"), "CYS": ("cysteine", "C"), "C": ("cysteine", "CYS"),
+                 "arginine": ("ARG", "R"), "ARG": ("arginine", "R"), "R": ("arginine", "ARG"),
+                  "proline": ("PRO", "P"), "PRO": ("proline", "P"), "P": ("proline", "PRO"),
+                   "leucine": ("LEU", "L"), "LEU": ("leucine", "L"), "L": ("leucine", "LEU"),
+                    "glycine": ("GLY", "G"), "GLY": ("glycine", "G"), "G": ("glycine", "GLY"),
+                     "alanine": ("ALA", "A"), "ALA": ("alanine", "A"), "A": ("alanine", "ALA"),
+                      "valine": ("VAL", "V"), "VAL": ("valine", "V"), "V": ("valine", "VAL"),
+                       "serine": ("SER", "S"), "SER": ("serine", "S"), "S": ("serine", "SER"),
+                        "lysine": ("LYS", "K"), "LYS": ("lysine", "K"), "K": ("lysine", "LYS")
+    }
+
+
+    RESIDUE_ATOMS = {
+     "PHE": {"C": 7}, "TRP": {"C": 9, "N": 1},
+      "MET": {"C": 3, "S": 1}, "ILE": {"C": 4},
+       "ASN": {"C": 3, "N": 1, "O": 1}, "THR": {"C": 2, "O": 1},
+        "HIS": {"C": 4, "N": 2}, "GLN": {"C": 3, "N": 1, "O": 1},
+         "GLU": {"C": 3, "O": 2}, "ASP": {"C": 2, "O": 2},
+          "TYR": {"C": 7, "O": 1}, "CYS": {"C": 1, "S": 1},
+           "ARG": {"C": 4, "N": 3}, "PRO": {"C": 3},
+            "LEU": {"C": 4}, "GLY": {},
+             "ALA": {"C": 1}, "VAL": {"C": 3},
+              "SER": {"C": 1, "O": 1}, "LYS": {"C": 4, "N": 1}
+    }
+
     def __init__(self, atoms, anisous):
         self.name = atoms[0]["residue_name"]
         self.number = atoms[0]["residue_number"]
@@ -1002,6 +1046,12 @@ class Residue:
         for atom in self.atoms:
             atom.residue = self
             self.mass += PERIODIC_TABLE[atom.element.upper()]
+
+
+        #Verify self
+        if self.name in RESIDUE_NAMES:
+            #This is a conventional residue
+
 
 
 
@@ -1062,6 +1112,9 @@ class Atom:
         return distance
 
 
+    def __repr__(self):
+        return "%s (#%i)" % (self.element, self.number)
+
 
 
 class Site:
@@ -1072,7 +1125,6 @@ class Site:
         self.atoms = []
         for residue in self.residues:
             self.atoms += residue.atoms
-
 
 
     def get_unbroken_site(self):
@@ -1267,7 +1319,7 @@ class Pdb:
 
 
         #Get objects
-        self.models = [Model(m, self.miscellaneous.sites) for m in self.coordinate.models]
+        self.models = [Model(m, self.miscellaneous.sites, self.connectivity) for m in self.coordinate.models]
         self.model = self.models[0]
 
 
