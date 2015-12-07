@@ -1,7 +1,7 @@
 from __future__ import print_function
 import re
 import math
-import requests
+#import requests
 from collections import Counter
 
 PERIODIC_TABLE = {
@@ -28,19 +28,22 @@ PERIODIC_TABLE = {
 
 
 def break_into_sections(sequence, break_points):
-    #Always start from the beginning
-    if break_points[0] != 0:
-        break_points = [0] + break_points
+    if break_points:
+        #Always start from the beginning
+        if break_points[0] != 0:
+            break_points = [0] + break_points
 
-    #Get sections
-    sections = []
-    for index in break_points:
-        if index == break_points[-1]:
-            sections.append(sequence[index:])
-        else:
-            sections.append(sequence[index:break_points[break_points.index(index)+1]])
+        #Get sections
+        sections = []
+        for index in break_points:
+            if index == break_points[-1]:
+                sections.append(sequence[index:])
+            else:
+                sections.append(sequence[index:break_points[break_points.index(index)+1]])
 
-    return sections
+        return sections
+    else:
+        return [sequence]
 
 
 
@@ -65,7 +68,7 @@ class NotValidPdbError(Exception):
 class Record:
 
     def __init__(self, line, number):
-        self.text = line
+        self.text = line + (" " * (80 - len(line)))
         self.line_num = number
 
         #What is the name, and is it valid?
@@ -127,9 +130,9 @@ class TitleSection(Section):
             self.classification, self.date, self.id_code = None, None, None
         else:
             header = header[0]
-            self.classification = header[10:50].strip() if header[10:50] != " " * 40 else None
-            self.date = header[50:59].strip() if header[50:59] != " " * 9 else None
-            self.id_code = header[62:66] if header[62:66] != "    " else None
+            self.classification = header[10:50].strip() if header[10:50].strip() else None
+            self.date = header[50:59].strip() if header[50:59].strip() else None
+            self.id_code = header[62:66] if header[62:66].strip() else None
 
 
         #Process OBSLTEs
@@ -158,6 +161,8 @@ class TitleSection(Section):
         else:
             mol_starts = get_substring_positions(compounds, "MOL_ID")
             mol_starts = sorted(mol_starts)
+            print(compounds)
+            print(mol_starts)
             molecules = break_into_sections(compounds, mol_starts)
             self.compounds = []
             for molecule in molecules:
@@ -227,7 +232,7 @@ class TitleSection(Section):
             self.model_num = 1
         else:
             model_num = model_num[0]
-            self.model_num = int(model_num[10:14].strip()) if model_num[10:14] != "    " else 1
+            self.model_num = int(model_num[10:14].strip()) if model_num[10:14].strip() else 1
 
 
         #Process MDLTYPs
@@ -328,36 +333,36 @@ class PrimaryStructureSection(Section):
         self.dbrefs = []
         for dbref in dbrefs:
             chain = {}
-            chain["id"] = dbref[7:11].strip() if dbref[7:11] != "    " else None
-            chain["chain"] = dbref[12] if dbref[12] != " " else None
-            chain["sequence_start"] = int(dbref[14:18].strip()) if dbref[14:18] != "    " else None
-            chain["insertion_start"] = dbref[18] if dbref[18] != " " else None
-            chain["sequence_end"] = int(dbref[20:24].strip()) if dbref[20:24] != "    " else None
-            chain["insertion_end"] = dbref[24] if dbref[24] != " " else None
-            chain["db_name"] = dbref[26:32].strip() if dbref[26:32] != " " * 6 else None
-            chain["accession"] = dbref[33:41].strip() if dbref[33:41] != " " * 8 else None
-            chain["db_id"] = dbref[42:54].strip() if dbref[42:54] != " " * 12 else None
-            chain["db_start"] = int(dbref[55:60].strip()) if dbref[55:60] != "     " else None
-            chain["db_insert_start"] = dbref[60] if dbref[60] != " " else None
-            chain["db_end"] = int(dbref[62:67]) if dbref[62:67] != "     " else None
-            chain["db_insert_end"] = dbref[67] if dbref[67] != " " else None
+            chain["id"] = dbref[7:11].strip() if dbref[7:11].strip() else None
+            chain["chain"] = dbref[12] if dbref[12].strip() else None
+            chain["sequence_start"] = int(dbref[14:18].strip()) if dbref[14:18].strip() else None
+            chain["insertion_start"] = dbref[18] if dbref[18].strip() else None
+            chain["sequence_end"] = int(dbref[20:24].strip()) if dbref[20:24].strip() else None
+            chain["insertion_end"] = dbref[24] if dbref[24].strip() else None
+            chain["db_name"] = dbref[26:32].strip() if dbref[26:32].strip() else None
+            chain["accession"] = dbref[33:41].strip() if dbref[33:41].strip() else None
+            chain["db_id"] = dbref[42:54].strip() if dbref[42:54].strip() else None
+            chain["db_start"] = int(dbref[55:60].strip()) if dbref[55:60].strip() else None
+            chain["db_insert_start"] = dbref[60] if dbref[60].strip() else None
+            chain["db_end"] = int(dbref[62:67]) if dbref[62:67].strip() else None
+            chain["db_insert_end"] = dbref[67] if dbref[67].strip() else None
             self.dbrefs.append(chain)
 
         assert len(dbref1) == len(dbref2)
         for dbref in zip(dbref1, dbref2):
             chain = {}
-            chain["id"] = dbref[0][7:11].strip() if dbref[0][7:11] != "    " else None
-            chain["chain"] = dbref[0][12] if dbref[0][12] != " " else None
-            chain["sequence_start"] = int(dbref[0][14:18].strip()) if dbref[0][14:18] != "    " else None
-            chain["insertion_start"] = dbref[0][18] if dbref[0][18] != " " else None
-            chain["sequence_end"] = int(dbref[0][20:24].strip()) if dbref[0][20:24] != "    " else None
-            chain["insertion_end"] = dbref[0][24] if dbref[0][24] != " " else None
-            chain["db_name"] = dbref[0][26:32].strip() if dbref[0][26:32] != " " * 6 else None
-            chain["accession"] = dbref[1][18:40].strip() if dbref[1][18:40] != " " * 22 else None
-            chain["db_id"] = dbref[0][48:67].strip() if dbref[0][48:67] != " " * 19 else None
-            chain["db_start"] = int(dbref[1][45:55].strip()) if dbref[1][45:55] != " " * 10 else None
+            chain["id"] = dbref[0][7:11].strip() if dbref[0][7:11].strip() else None
+            chain["chain"] = dbref[0][12] if dbref[0][12].strip() else None
+            chain["sequence_start"] = int(dbref[0][14:18].strip()) if dbref[0][14:18].strip() else None
+            chain["insertion_start"] = dbref[0][18] if dbref[0][18].strip() else None
+            chain["sequence_end"] = int(dbref[0][20:24].strip()) if dbref[0][20:24].strip() else None
+            chain["insertion_end"] = dbref[0][24] if dbref[0][24].strip() else None
+            chain["db_name"] = dbref[0][26:32].strip() if dbref[0][26:32].strip() else None
+            chain["accession"] = dbref[1][18:40].strip() if dbref[1][18:40].strip() else None
+            chain["db_id"] = dbref[0][48:67].strip() if dbref[0][48:67].strip() else None
+            chain["db_start"] = int(dbref[1][45:55].strip()) if dbref[1][45:55].strip() else None
             chain["db_insert_start"] = None
-            chain["db_end"] = int(dbref[1][57:67]) if dbref[1][57:67] != " " * 10 else None
+            chain["db_end"] = int(dbref[1][57:67]) if dbref[1][57:67].strip() else None
             chain["db_insert_end"] = None
             self.dbrefs.append(chain)
 
@@ -365,14 +370,14 @@ class PrimaryStructureSection(Section):
         #Process SEQADVs (any differences between ref sequence and this sequence)
         seqadvs = [r for r in self.records if r.name == "SEQADV"]
         self.sequence_differences = [{
-         "residue": s[12:15].strip() if s[12:15] != "   " else None,
-         "chain": s[16] if s[16] != " " else None,
-         "sequence_number": int(s[18:22].strip()) if s[18:22] != "    " else None,
-         "db_name": s[24:28].strip() if s[24:28] != "    " else None,
-         "db_accession": s[29:38].strip() if s[29:38] != " " * 9 else None,
-         "db_residue": s[39:42] if s[39:42] != "   " else None,
-         "db_sequence_number": int(s[43:48].strip()) if s[43:48] != "     " else None,
-         "comment": s[49:70].strip() if s[49:70] != " " * 21 else None
+         "residue": s[12:15].strip() if s[12:15].strip() else None,
+         "chain": s[16] if s[16].strip() else None,
+         "sequence_number": int(s[18:22].strip()) if s[18:22].strip() else None,
+         "db_name": s[24:28].strip() if s[24:28].strip() else None,
+         "db_accession": s[29:38].strip() if s[29:38].strip() else None,
+         "db_residue": s[39:42] if s[39:42].strip() else None,
+         "db_sequence_number": int(s[43:48].strip()) if s[43:48].strip() else None,
+         "comment": s[49:70].strip() if s[49:70].strip() else None
         } for s in seqadvs]
 
 
@@ -400,12 +405,12 @@ class PrimaryStructureSection(Section):
             self.modified_residues = []
             for m in modres:
                 self.modified_residues.append({
-                 "new_residue": m[12:15].strip() if m[12:15] != "   " else None,
+                 "new_residue": m[12:15].strip() if m[12:15].strip() else None,
                  "chain": m[16] if m[16] != " " else None,
-                 "sequence_number": int(m[18:22].strip()) if m[18:22] != "    " else None,
+                 "sequence_number": int(m[18:22].strip()) if m[18:22].strip() else None,
                  "insert_code": m[22] if m[22] != " " else None,
-                 "standard_residue": m[24:27].strip() if m[24:27] != "   " else None,
-                 "comment": m[29:70].strip() if m[29:70] != " " * 41 else None
+                 "standard_residue": m[24:27].strip() if m[24:27].strip() else None,
+                 "comment": m[29:70].strip() if m[29:70].strip() else None
                 })
 
 
@@ -439,11 +444,11 @@ class HeterogenSection(Section):
                 for het_dict in self.hets:
                     if het[7:10].strip() == het_dict["het_id"]:
                         het_dict["occurences"].append({
-                         "chain": het[12] if het[12] != " " else None,
-                         "sequence_number": int(het[13:17].strip()) if het[13:17] != "   " else None,
-                         "insertion_number": het[17] if het[17] != " " else None,
-                         "atoms": int(het[20:25].strip()) if het[20:25] != "     " else None,
-                         "description": het[30:70].strip() if het[30:70] != " " * 40 else None
+                         "chain": het[12] if het[12].strip() else None,
+                         "sequence_number": int(het[13:17].strip()) if het[13:17].strip() else None,
+                         "insertion_number": het[17] if het[17].strip() else None,
+                         "atoms": int(het[20:25].strip()) if het[20:25].strip() else None,
+                         "description": het[30:70].strip() if het[30:70].strip() else None
                         })
 
             #Process HETSYNs
@@ -491,19 +496,19 @@ class SecondaryStructureSection(Section):
         #Process HELIXs
         helices = [r for r in self.records if r.name == "HELIX"]
         self.helices = [{
-         "serial_num": int(l[7:10].strip()) if l[7:10] != "   " else None,
-         "helix_id": l[11:14].strip() if l[11:14] != "   " else None,
-         "start_residue_name": l[15:18].strip() if l[15:18] != "   " else None,
-         "start_residue_chain": l[19] if l[19] != " " else None,
-         "start_residue_number": int(l[21:25].strip()) if l[21:25] != "    " else None,
-         "start_residue_insert": l[25] if l[25] != " " else None,
-         "end_residue_name": l[27:30].strip() if l[27:28] != "   " else None,
-         "end_residue_chain": l[31] if l[31] != " " else None,
-         "end_residue_number": int(l[33:37].strip()) if l[33:37] != "    " else None,
-         "end_residue_insert": l[37] if l[37] != " " else None,
-         "helix_class": int(l[38:40].strip()) if l[38:40] != "  " else None,
-         "comment": l[40:70].strip() if l[40:70] != " " * 30 else None,
-         "length": int(l[71:76].strip()) if l[71:76] != "    " else None
+         "serial_num": int(l[7:10].strip()) if l[7:10].strip() else None,
+         "helix_id": l[11:14].strip() if l[11:14].strip() else None,
+         "start_residue_name": l[15:18].strip() if l[15:18].strip() else None,
+         "start_residue_chain": l[19] if l[19].strip() else None,
+         "start_residue_number": int(l[21:25].strip()) if l[21:25].strip() else None,
+         "start_residue_insert": l[25] if l[25].strip() else None,
+         "end_residue_name": l[27:30].strip() if l[27:28].strip() else None,
+         "end_residue_chain": l[31] if l[31].strip() else None,
+         "end_residue_number": int(l[33:37].strip()) if l[33:37].strip() else None,
+         "end_residue_insert": l[37] if l[37].strip() else None,
+         "helix_class": int(l[38:40].strip()) if l[38:40].strip() else None,
+         "comment": l[40:70].strip() if l[40:70].strip() else None,
+         "length": int(l[71:76].strip()) if l[71:76].strip() else None
         } for l in helices]
 
 
@@ -515,25 +520,25 @@ class SecondaryStructureSection(Section):
         for sheet in sheets:
             lines = [l for l in sheet_lines if l[11:14].strip() == sheet]
             strands = [{
-             "strand_id": l[7:10].strip() if l[7:10] != "   " else None,
-             "start_residue_name": l[17:20].strip() if l[17:20] != "   " else None,
-             "start_residue_chain": l[21] if l[21] != " " else None,
-             "start_residue_number": int(l[22:26].strip()) if l[22:26] != "    " else None,
-             "start_residue_insert": l[26] if l[26] != " " else None,
-             "end_residue_name": l[28:31].strip() if l[28:31] != "   " else None,
-             "end_residue_chain": l[32] if l[32] != " " else None,
-             "end_residue_number": int(l[33:37].strip()) if l[33:37] != "    " else None,
-             "end_residue_insert": l[37] if l[37] != " " else None,
-             "sense": int(l[38:40].strip()) if l[38:40] != "  " else None,
-             "reg_cur_atom": l[41:45].strip() if l[41:45] != "    " else None,
-             "reg_cur_residue": l[45:48] if l[45:48] != "   " else None,
-             "reg_cur_chain": l[49] if l[49] != " " else None,
-             "reg_cur_number": int(l[50:54].strip()) if l[50:54] != "    " else None,
-             "reg_cur_insert": l[54] if l[54] != " " else None,
-             "reg_prev_atom": l[56:60].strip() if l[56:60] != "    " else None,
-             "reg_prev_residue": l[60:63] if l[60:63] != "   " else None,
-             "reg_prev_chain": l[64] if l[64] != " " else None,
-             "reg_prev_number": int(l[65:69].strip()) if l[65:69] != "    " else None,
+             "strand_id": l[7:10].strip() if l[7:10].strip() else None,
+             "start_residue_name": l[17:20].strip() if l[17:20].strip() else None,
+             "start_residue_chain": l[21] if l[21].strip() else None,
+             "start_residue_number": int(l[22:26].strip()) if l[22:26].strip() else None,
+             "start_residue_insert": l[26] if l[26].strip() else None,
+             "end_residue_name": l[28:31].strip() if l[28:31].strip() else None,
+             "end_residue_chain": l[32] if l[32].strip() else None,
+             "end_residue_number": int(l[33:37].strip()) if l[33:37].strip() else None,
+             "end_residue_insert": l[37] if l[37].strip() else None,
+             "sense": int(l[38:40].strip()) if l[38:40].strip() else None,
+             "reg_cur_atom": l[41:45].strip() if l[41:45].strip() else None,
+             "reg_cur_residue": l[45:48] if l[45:48].strip() else None,
+             "reg_cur_chain": l[49] if l[49].strip() else None,
+             "reg_cur_number": int(l[50:54].strip()) if l[50:54].strip() else None,
+             "reg_cur_insert": l[54] if l[54].strip() else None,
+             "reg_prev_atom": l[56:60].strip() if l[56:60].strip() else None,
+             "reg_prev_residue": l[60:63] if l[60:63].strip() else None,
+             "reg_prev_chain": l[64] if l[64].strip() else None,
+             "reg_prev_number": int(l[65:69].strip()) if l[65:69].strip() else None,
              "reg_prev_insert": l[69] if l[69] else None
             } for l in lines]
             self.sheets.append({"sheet_id":sheet, "strands":strands})
@@ -549,53 +554,53 @@ class ConnectAnnotationSection(Section):
         #Process SSBONDs
         ssbonds = [r for r in self.records if r.name == "SSBOND"]
         self.ssbonds = [{
-         "serial_num": int(s[7:10].strip()) if s[7:10] != "   " else None,
-         "residue_1_name": s[11:14].strip() if s[11:14] != "   " else None,
-         "residue_1_chain": s[15] if s[15] != " " else None,
-         "residue_1_number": int(s[17:21].strip()) if s[17:21] != "    " else None,
-         "residue_1_insert": s[21] if s[21] != " " else None,
-         "residue_1_symmetry": s[59:65].strip() if s[59:65] != " " * 6 else None,
-         "residue_2_name": s[25:28].strip() if s[25:28] != "   " else None,
-         "residue_2_chain": s[29] if s[29] != " " else None,
-         "residue_2_number": int(s[31:35].strip()) if s[31:35] != "    " else None,
-         "residue_2_symmetry": s[66:72].strip() if s[59:65] != " " * 6 else None,
-         "residue_2_insert": s[35] if s[35] != " " else None,
-         "disulfide_distance": float(s[73:78].strip()) if s[73:78] != "     " else None
+         "serial_num": int(s[7:10].strip()) if s[7:10].strip() else None,
+         "residue_1_name": s[11:14].strip() if s[11:14].strip() else None,
+         "residue_1_chain": s[15] if s[15].strip() else None,
+         "residue_1_number": int(s[17:21].strip()) if s[17:21].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_1_symmetry": s[59:65].strip() if s[59:65].strip() else None,
+         "residue_2_name": s[25:28].strip() if s[25:28].strip() else None,
+         "residue_2_chain": s[29] if s[29].strip() else None,
+         "residue_2_number": int(s[31:35].strip()) if s[31:35].strip() else None,
+         "residue_2_symmetry": s[66:72].strip() if s[59:65].strip() else None,
+         "residue_2_insert": s[35] if s[35].strip() else None,
+         "disulfide_distance": float(s[73:78].strip()) if s[73:78].strip() else None
         } for s in ssbonds]
 
 
         #Process LINKs
         links = [r for r in self.records if r.name == "LINK"]
         self.links = [{
-         "residue_1_atom": s[12:16].strip() if s[12:16] != "    " else None,
-         "residue_1_name": s[17:20].strip() if s[17:20] != "   " else None,
-         "residue_1_chain": s[21] if s[21] != " " else None,
-         "residue_1_number": int(s[22:26].strip()) if s[22:26] != "    " else None,
-         "residue_1_symmetry": s[59:65].strip() if s[59:65] != " " * 6 else None,
-         "residue_1_insert": s[21] if s[21] != " " else None,
-         "residue_2_atom": s[42:46].strip() if s[42:46] != "    " else None,
-         "residue_2_name": s[47:50].strip() if s[47:50] != "   " else None,
-         "residue_2_chain": s[51] if s[51] != " " else None,
-         "residue_2_number": int(s[52:56].strip()) if s[52:56] != "    " else None,
-         "residue_2_symmetry": s[66:72].strip() if s[59:65] != " " * 6 else None,
-         "link_distance": float(s[73:78].strip()) if s[73:78] != "     " else None
+         "residue_1_atom": s[12:16].strip() if s[12:16].strip() else None,
+         "residue_1_name": s[17:20].strip() if s[17:20].strip() else None,
+         "residue_1_chain": s[21] if s[21].strip() else None,
+         "residue_1_number": int(s[22:26].strip()) if s[22:26].strip() else None,
+         "residue_1_symmetry": s[59:65].strip() if s[59:65].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_2_atom": s[42:46].strip() if s[42:46].strip() else None,
+         "residue_2_name": s[47:50].strip() if s[47:50].strip() else None,
+         "residue_2_chain": s[51] if s[51].strip() else None,
+         "residue_2_number": int(s[52:56].strip()) if s[52:56].strip() else None,
+         "residue_2_symmetry": s[66:72].strip() if s[59:65].strip() else None,
+         "link_distance": float(s[73:78].strip()) if s[73:78].strip() else None
         } for s in links]
 
 
         #Process CISPEPs
         cispeps = [r for r in self.records if r.name == "CISPEP"]
         self.cispeps = [{
-         "serial_num": int(s[7:10].strip()) if s[7:10] != "   " else None,
-         "residue_1_name": s[11:14].strip() if s[11:14] != "   " else None,
-         "residue_1_chain": s[15] if s[15] != " " else None,
-         "residue_1_number": int(s[17:21].strip()) if s[17:21] != "    " else None,
-         "residue_1_insert": s[21] if s[21] != " " else None,
-         "residue_2_name": s[25:28].strip() if s[25:28] != "   " else None,
-         "residue_2_chain": s[29] if s[29] != " " else None,
-         "residue_2_number": int(s[31:35].strip()) if s[31:35] != "    " else None,
-         "residue_2_insert": s[35] if s[35] != " " else None,
-         "modnum": int(s[43:46].strip()) if s[43:46] != "   " else None,
-         "angle_measure": float(s[53:59].strip()) if s[53:59] != "     " else None
+         "serial_num": int(s[7:10].strip()) if s[7:10].strip() else None,
+         "residue_1_name": s[11:14].strip() if s[11:14].strip() else None,
+         "residue_1_chain": s[15] if s[15].strip() else None,
+         "residue_1_number": int(s[17:21].strip()) if s[17:21].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_2_name": s[25:28].strip() if s[25:28].strip() else None,
+         "residue_2_chain": s[29] if s[29].strip() else None,
+         "residue_2_number": int(s[31:35].strip()) if s[31:35].strip() else None,
+         "residue_2_insert": s[35] if s[35].strip() else None,
+         "modnum": int(s[43:46].strip()) if s[43:46].strip() else None,
+         "angle_measure": float(s[53:59].strip()) if s[53:59].strip() else None
         } for s in cispeps]
 
 
@@ -616,27 +621,27 @@ class MiscellaneousSection(Section):
             for line in lines:
                 if line[18:27] != " " * 9:
                     site["residues"].append({
-                     "chain": line[22] if line[22] != " " else None,
-                     "residue_name": line[18:21].strip() if line[18:21] != "   " else None,
-                     "residue_number": int(line[23:27].strip()) if line[23:27] != "    " else None
+                     "chain": line[22] if line[22].strip() else None,
+                     "residue_name": line[18:21].strip() if line[18:21].strip() else None,
+                     "residue_number": int(line[23:27].strip()) if line[23:27].strip() else None
                     })
                 if line[29:38] != " " * 9:
                     site["residues"].append({
-                     "chain": line[33] if line[33] != " " else None,
-                     "residue_name": line[29:32].strip() if line[29:32] != "   " else None,
-                     "residue_number": int(line[34:38].strip()) if line[34:38] != "    " else None
+                     "chain": line[33] if line[33].strip() else None,
+                     "residue_name": line[29:32].strip() if line[29:32].strip() else None,
+                     "residue_number": int(line[34:38].strip()) if line[34:38].strip() else None
                     })
                 if line[40:49] != " " * 9:
                     site["residues"].append({
-                     "chain": line[44] if line[44] != " " else None,
-                     "residue_name": line[40:43].strip() if line[40:43] != "   " else None,
-                     "residue_number": int(line[45:49].strip()) if line[45:49] != "    " else None
+                     "chain": line[44] if line[44].strip() else None,
+                     "residue_name": line[40:43].strip() if line[40:43].strip() else None,
+                     "residue_number": int(line[45:49].strip()) if line[45:49].strip() else None
                     })
                 if line[51:60] != " " * 9:
                     site["residues"].append({
-                     "chain": line[55] if line[55] != " " else None,
-                     "residue_name": line[51:54].strip() if line[51:54] != "   " else None,
-                     "residue_number": int(line[56:60].strip()) if line[56:60] != "    " else None
+                     "chain": line[55] if line[55].strip() else None,
+                     "residue_name": line[51:54].strip() if line[51:54].strip() else None,
+                     "residue_number": int(line[56:60].strip()) if line[56:60].strip() else None
                     })
             self.sites.append(site)
 
@@ -655,14 +660,14 @@ class CrystalSection(Section):
              None, None, None, None, None, None, None, None)
         else:
             cryst1 = cryst1[0]
-            self.a = float(cryst1[6:15].strip()) if cryst1[6:15] != " " * 9 else None
-            self.b = float(cryst1[15:24].strip()) if cryst1[15:24] != " " * 9 else None
-            self.c = float(cryst1[24:33].strip()) if cryst1[24:33] != " " * 9 else None
-            self.alpha = float(cryst1[33:40].strip()) if cryst1[33:40] != " " * 7 else None
-            self.beta = float(cryst1[40:47].strip()) if cryst1[40:47] != " " * 7 else None
-            self.gamma = float(cryst1[47:54].strip()) if cryst1[47:54] != " " * 7 else None
-            self.s_group = cryst1[55:66].strip() if cryst1[55:66] != " " * 11 else None
-            self.z = int(cryst1[66:70].strip()) if cryst1[66:70] != " " * 4 else None
+            self.a = float(cryst1[6:15].strip()) if cryst1[6:15].strip() else None
+            self.b = float(cryst1[15:24].strip()) if cryst1[15:24].strip() else None
+            self.c = float(cryst1[24:33].strip()) if cryst1[24:33].strip() else None
+            self.alpha = float(cryst1[33:40].strip()) if cryst1[33:40].strip() else None
+            self.beta = float(cryst1[40:47].strip()) if cryst1[40:47].strip() else None
+            self.gamma = float(cryst1[47:54].strip()) if cryst1[47:54].strip() else None
+            self.s_group = cryst1[55:66].strip() if cryst1[55:66].strip() else None
+            self.z = int(cryst1[66:70].strip()) if cryst1[66:70].strip() else None
 
 
         #Process ORIGXns
@@ -674,28 +679,28 @@ class CrystalSection(Section):
             self.o11, self.o12, self.o13, self.t1 = None, None, None, None
         else:
             origx1 = origx1[0]
-            self.o11 = float(origx1[10:20].strip()) if origx1[10:20] != " " * 10 else None
-            self.o12 = float(origx1[20:30].strip()) if origx1[20:30] != " " * 10 else None
-            self.o13 = float(origx1[30:40].strip()) if origx1[30:40] != " " * 10 else None
-            self.t1 = float(origx1[45:55].strip()) if origx1[45:55] != " " * 10 else None
+            self.o11 = float(origx1[10:20].strip()) if origx1[10:20].strip() else None
+            self.o12 = float(origx1[20:30].strip()) if origx1[20:30].strip() else None
+            self.o13 = float(origx1[30:40].strip()) if origx1[30:40].strip() else None
+            self.t1 = float(origx1[45:55].strip()) if origx1[45:55].strip() else None
 
         if len(origx2) == 0:
             self.o21, self.o22, self.o23, self.t2 = None, None, None, None
         else:
             origx2 = origx2[0]
-            self.o21 = float(origx2[10:20].strip()) if origx2[10:20] != " " * 10 else None
-            self.o22 = float(origx2[20:30].strip()) if origx2[20:30] != " " * 10 else None
-            self.o23 = float(origx2[30:40].strip()) if origx2[30:40] != " " * 10 else None
-            self.t2 = float(origx2[45:55].strip()) if origx2[45:55] != " " * 10 else None
+            self.o21 = float(origx2[10:20].strip()) if origx2[10:20].strip() else None
+            self.o22 = float(origx2[20:30].strip()) if origx2[20:30].strip() else None
+            self.o23 = float(origx2[30:40].strip()) if origx2[30:40].strip() else None
+            self.t2 = float(origx2[45:55].strip()) if origx2[45:55].strip() else None
 
         if len(origx3) == 0:
             self.o31, self.o32, self.o33, self.t3 = None, None, None, None
         else:
             origx3 = origx3[0]
-            self.o31 = float(origx3[10:20].strip()) if origx3[10:20] != " " * 10 else None
-            self.o32 = float(origx3[20:30].strip()) if origx3[20:30] != " " * 10 else None
-            self.o33 = float(origx3[30:40].strip()) if origx3[30:40] != " " * 10 else None
-            self.t3 = float(origx3[45:55].strip()) if origx3[45:55] != " " * 10 else None
+            self.o31 = float(origx3[10:20].strip()) if origx3[10:20].strip() else None
+            self.o32 = float(origx3[20:30].strip()) if origx3[20:30].strip() else None
+            self.o33 = float(origx3[30:40].strip()) if origx3[30:40].strip() else None
+            self.t3 = float(origx3[45:55].strip()) if origx3[45:55].strip() else None
 
 
         #Process SCALEns
@@ -707,28 +712,28 @@ class CrystalSection(Section):
             self.s11, self.s12, self.s13, self.u1 = None, None, None, None
         else:
             scale1 = scale1[0]
-            self.s11 = float(scale1[10:20].strip()) if scale1[10:20] != " " * 10 else None
-            self.s12 = float(scale1[20:30].strip()) if scale1[20:30] != " " * 10 else None
-            self.s13 = float(scale1[30:40].strip()) if scale1[30:40] != " " * 10 else None
-            self.u1 = float(scale1[45:55].strip()) if scale1[45:55] != " " * 10 else None
+            self.s11 = float(scale1[10:20].strip()) if scale1[10:20].strip() else None
+            self.s12 = float(scale1[20:30].strip()) if scale1[20:30].strip() else None
+            self.s13 = float(scale1[30:40].strip()) if scale1[30:40].strip() else None
+            self.u1 = float(scale1[45:55].strip()) if scale1[45:55].strip() else None
 
         if len(scale2) == 0:
             self.s21, self.s22, self.s23, self.u2 = None, None, None, None
         else:
             scale2 = scale2[0]
-            self.s21 = float(scale2[10:20].strip()) if scale2[10:20] != " " * 10 else None
-            self.s22 = float(scale2[20:30].strip()) if scale2[20:30] != " " * 10 else None
-            self.s23 = float(scale2[30:40].strip()) if scale2[30:40] != " " * 10 else None
-            self.u2 = float(scale2[45:55].strip()) if scale2[45:55] != " " * 10 else None
+            self.s21 = float(scale2[10:20].strip()) if scale2[10:20].strip() else None
+            self.s22 = float(scale2[20:30].strip()) if scale2[20:30].strip() else None
+            self.s23 = float(scale2[30:40].strip()) if scale2[30:40].strip() else None
+            self.u2 = float(scale2[45:55].strip()) if scale2[45:55].strip() else None
 
         if len(scale3) == 0:
             self.s31, self.s32, self.s33, self.u3 = None, None, None, None
         else:
             scale3 = scale3[0]
-            self.s31 = float(scale3[10:20].strip()) if scale3[10:20] != " " * 10 else None
-            self.s32 = float(scale3[20:30].strip()) if scale3[20:30] != " " * 10 else None
-            self.s33 = float(scale3[30:40].strip()) if scale3[30:40] != " " * 10 else None
-            self.u3 = float(scale3[45:55].strip()) if scale3[45:55] != " " * 10 else None
+            self.s31 = float(scale3[10:20].strip()) if scale3[10:20].strip() else None
+            self.s32 = float(scale3[20:30].strip()) if scale3[20:30].strip() else None
+            self.s33 = float(scale3[30:40].strip()) if scale3[30:40].strip() else None
+            self.u3 = float(scale3[45:55].strip()) if scale3[45:55].strip() else None
 
 
         #Process MTRIXns
@@ -740,28 +745,28 @@ class CrystalSection(Section):
             self.m11, self.m12, self.m13, self.v1 = None, None, None, None
         else:
             mtrix1 = mtrix1[0]
-            self.m11 = float(mtrix1[10:20].strip()) if mtrix1[10:20] != " " * 10 else None
-            self.m12 = float(mtrix1[20:30].strip()) if mtrix1[20:30] != " " * 10 else None
-            self.m13 = float(mtrix1[30:40].strip()) if mtrix1[30:40] != " " * 10 else None
-            self.v1 = float(mtrix1[45:55].strip()) if mtrix1[45:55] != " " * 10 else None
+            self.m11 = float(mtrix1[10:20].strip()) if mtrix1[10:20].strip() else None
+            self.m12 = float(mtrix1[20:30].strip()) if mtrix1[20:30].strip() else None
+            self.m13 = float(mtrix1[30:40].strip()) if mtrix1[30:40].strip() else None
+            self.v1 = float(mtrix1[45:55].strip()) if mtrix1[45:55].strip() else None
 
         if len(mtrix2) == 0:
             self.m21, self.m22, self.m23, self.v2 = None, None, None, None
         else:
             mtrix2 = mtrix2[0]
-            self.m21 = float(mtrix2[10:20].strip()) if mtrix2[10:20] != " " * 10 else None
-            self.m22 = float(mtrix2[20:30].strip()) if mtrix2[20:30] != " " * 10 else None
-            self.m23 = float(mtrix2[30:40].strip()) if mtrix2[30:40] != " " * 10 else None
-            self.v2 = float(mtrix2[45:55].strip()) if mtrix2[45:55] != " " * 10 else None
+            self.m21 = float(mtrix2[10:20].strip()) if mtrix2[10:20].strip() else None
+            self.m22 = float(mtrix2[20:30].strip()) if mtrix2[20:30].strip() else None
+            self.m23 = float(mtrix2[30:40].strip()) if mtrix2[30:40].strip() else None
+            self.v2 = float(mtrix2[45:55].strip()) if mtrix2[45:55].strip() else None
 
         if len(mtrix3) == 0:
             self.m31, self.m32, self.m33, self.v3 = None, None, None, None
         else:
             mtrix3 = mtrix3[0]
-            self.m31 = float(mtrix3[10:20].strip()) if mtrix3[10:20] != " " * 10 else None
-            self.m32 = float(mtrix3[20:30].strip()) if mtrix3[20:30] != " " * 10 else None
-            self.m33 = float(mtrix3[30:40].strip()) if mtrix3[30:40] != " " * 10 else None
-            self.v3 = float(mtrix3[45:55].strip()) if mtrix3[45:55] != " " * 10 else None
+            self.m31 = float(mtrix3[10:20].strip()) if mtrix3[10:20].strip() else None
+            self.m32 = float(mtrix3[20:30].strip()) if mtrix3[20:30].strip() else None
+            self.m33 = float(mtrix3[30:40].strip()) if mtrix3[30:40].strip() else None
+            self.v3 = float(mtrix3[45:55].strip()) if mtrix3[45:55].strip() else None
 
 
 
@@ -790,70 +795,71 @@ class CoordinateSection(Section):
             #Process ATOMs
             atoms = [r for r in model_lines if r.name == "ATOM"]
             model["atoms"] = [{
-             "serial_num": int(a[6:11].strip()) if a[6:11] != "     " else None,
-             "atom_name": a[12:16].strip() if a[12:16] != "    " else None,
-             "alt_loc": a[16] if a[16] != " " else None,
-             "residue_name": a[17:20].strip() if a[17:20] != "   " else None,
-             "chain": a[21] if a[21] != " " else None,
-             "residue_number": int(a[22:26].strip()) if a[22:26] != "    " else None,
-             "residue_insert": a[26] if a[26] != " " else None,
-             "x": float(a[30:38].strip()) if a[30:38] != " " * 8 else None,
-             "y": float(a[38:46].strip()) if a[38:46] != " " * 8 else None,
-             "z": float(a[46:54].strip()) if a[46:54] != " " * 8 else None,
-             "occupancy": float(a[54:60].strip()) if a[54:60] != " " * 6 else None,
-             "temp_factor": float(a[60:66].strip()) if a[60:66] != " " * 6 else None,
-             "element": a[76:78].strip() if a[76:78] != "  " else None,
-             "charge": a[78:80].strip() if a[78:80] != "  " else None
+             "serial_num": int(a[6:11].strip()) if a[6:11].strip()else None,
+             "atom_name": a[12:16].strip() if a[12:16].strip() else None,
+             "alt_loc": a[16] if a[16].strip() else None,
+             "residue_name": a[17:20].strip() if a[17:20].strip() else None,
+             "chain": a[21] if a[21].strip() else None,
+             "residue_number": int(a[22:26].strip()) if a[22:26].strip() else None,
+             "residue_insert": a[26] if a[26].strip() else None,
+             "x": float(a[30:38].strip()) if a[30:38].strip() else None,
+             "y": float(a[38:46].strip()) if a[38:46].strip() else None,
+             "z": float(a[46:54].strip()) if a[46:54].strip() else None,
+             "occupancy": float(a[54:60].strip()) if a[54:60].strip() else None,
+             "temp_factor": float(a[60:66].strip()) if a[60:66].strip() else None,
+             "element": a[76:78].strip() if a[76:78].strip() else None,
+             "charge": a[78:80].strip() if a[78:80].strip() else None
             } for a in atoms]
 
 
             #Process ANISOU
             anisou = [r for r in model_lines if r.name == "ANISOU"]
             model["anisou"] = [{
-             "serial_num": int(a[6:11].strip()) if a[6:11] != "     " else None,
-             "atom_name": a[12:16].strip() if a[12:16] != "    " else None,
-             "alt_loc": a[16] if a[16] != " " else None,
-             "residue_name": a[17:20].strip() if a[17:20] != "   " else None,
-             "chain": a[21] if a[21] != " " else None,
-             "residue_number": int(a[22:26].strip()) if a[22:26] != "    " else None,
-             "residue_insert": a[26] if a[26] != " " else None,
-             "u11": int(a[28:35].strip()) if a[28:35] != " " * 7 else None,
-             "u22": int(a[35:42].strip()) if a[35:42] != " " * 7 else None,
-             "u33": int(a[42:49].strip()) if a[42:49] != " " * 7 else None,
-             "u12": int(a[49:56].strip()) if a[49:56] != " " * 7 else None,
-             "u13": int(a[56:63].strip()) if a[56:63] != " " * 7 else None,
-             "u23": int(a[63:70].strip()) if a[63:70] != " " * 7 else None,
-             "element": a[76:78].strip() if a[76:78] != "  " else None,
-             "charge": a[78:80].strip() if a[78:80] != "  " else None
+             "serial_num": int(a[6:11].strip()) if a[6:11].strip() else None,
+             "atom_name": a[12:16].strip() if a[12:16].strip() else None,
+             "alt_loc": a[16] if a[16].strip() else None,
+             "residue_name": a[17:20].strip() if a[17:20].strip() else None,
+             "chain": a[21] if a[21].strip() else None,
+             "residue_number": int(a[22:26].strip()) if a[22:26].strip() else None,
+             "residue_insert": a[26] if a[26].strip() else None,
+             "u11": int(a[28:35].strip()) if a[28:35].strip() else None,
+             "u22": int(a[35:42].strip()) if a[35:42].strip() else None,
+             "u33": int(a[42:49].strip()) if a[42:49].strip() else None,
+             "u12": int(a[49:56].strip()) if a[49:56].strip() else None,
+             "u13": int(a[56:63].strip()) if a[56:63].strip() else None,
+             "u23": int(a[63:70].strip()) if a[63:70].strip() else None,
+             "element": a[76:78].strip() if a[76:78].strip() else None,
+             "charge": a[78:80].strip() if a[78:80].strip() else None
             } for a in anisou]
 
 
             #Process TERs
             ters = [r for r in model_lines if r.name == "TER"]
+            print(len(ters))
             model["termini"] = [{
-             "serial_num": int(a[6:11].strip()) if a[6:11] != "     " else None,
-             "residue_name": a[17:20].strip() if a[17:20] != "   " else None,
-             "chain": a[21] if a[21] != " " else None,
-             "residue_number": int(a[22:26].strip()) if a[22:26] != "    " else None,
-             "residue_insert": a[26] if a[26] != " " else None,
+             "serial_num": int(a[6:11].strip()) if a[6:11].strip() else None,
+             "residue_name": a[17:20].strip() if a[17:20].strip() else None,
+             "chain": a[21] if a[21].strip() else None,
+             "residue_number": int(a[22:26].strip()) if a[22:26].strip() else None,
+             "residue_insert": a[26] if a[26].strip() else None,
             } for a in ters]
 
 
             #Process HETATMs
             hetatoms = [r for r in model_lines if r.name == "HETATM"]
             model["hetero_atoms"] = [{
-             "serial_num": int(a[6:11].strip()) if a[6:11] != "     " else None,
+             "serial_num": int(a[6:11].strip()) if a[6:11].strip() else None,
              "atom_name": a[12:16].strip(),
-             "alt_loc": a[16] if a[16] != " " else None,
-             "residue_name": a[17:20] if a[17:20] != "   " else None,
-             "chain": a[21] if a[21] != " " else None,
-             "residue_number": int(a[22:26].strip()) if a[22:26] != "    " else None,
+             "alt_loc": a[16] if a[16].strip() else None,
+             "residue_name": a[17:20] if a[17:20].strip() else None,
+             "chain": a[21] if a[21].strip() else None,
+             "residue_number": int(a[22:26].strip()) if a[22:26].strip() else None,
              "x": float(a[30:38].strip()),
              "y": float(a[38:46].strip()),
              "z": float(a[46:54].strip()),
-             "occupancy": float(a[54:60].strip()) if a[54:60] != " " * 6 else None,
-             "temp_factor": float(a[60:66].strip()) if a[60:66] != " " * 6 else None,
-             "element": a[76:78].strip() if a[76:78] != "  " else None,
+             "occupancy": float(a[54:60].strip()) if a[54:60].strip() else None,
+             "temp_factor": float(a[60:66].strip()) if a[60:66].strip() else None,
+             "element": a[76:78].strip() if a[76:78].strip() else None,
              "charge": a[78:80].strip() if a[78:80] != "  " else None
             } for a in hetatoms]
 
@@ -905,7 +911,11 @@ class Model:
 
 
         #Get heteroatoms
-        hets = list(set([(h["residue_number"], h["chain"]) for h in model_dict["hetero_atoms"]]))
+        hets = []
+        for h in model_dict["hetero_atoms"]:
+            het = (h["residue_number"], h["chain"])
+            if het not in hets:
+                hets.append(het)
         self.hets = []
 
         for het in hets:
@@ -929,10 +939,20 @@ class Model:
 
 
         #Process hets
-        for het in self.hets:
+        for index, het in enumerate(self.hets, start=1):
             het.model = self
+            het.index = index
             self.mass += het.mass
             self.atoms += het.atoms
+
+
+        #Verify hets of same name are identical
+        het_names = set([h.name for h in self.hets])
+        for name in het_names:
+            hets = [h for h in self.hets if h.name == name]
+            if len(hets) > 1:
+                if not all([het.get_atom_counts() == hets[0].get_atom_counts() for het in hets[1:]]):
+                    pass#print("Warning! Not all %s HETs are identical." % name)
 
 
         #Process residues
@@ -964,6 +984,13 @@ class Model:
                                 residues.append(obj_residue)
             if len(residues) > 0:
                 self.sites.append(Site(site["name"], residues))
+
+
+
+    def get_chain_by_name(self, name):
+        for chain in self.chains:
+            if chain.name == name:
+                return chain
 
 
 
@@ -1000,6 +1027,12 @@ class Chain:
         #Process atoms
         for atom in self.atoms:
             atom.chain = self
+
+
+    def get_residue_by_number(self, number):
+        for residue in self.residues:
+            if residue.number == number:
+                return residue
 
 
 
@@ -1066,7 +1099,8 @@ class Residue:
 
 
     def verify_self(self):
-        if self.name in self.RESIDUE_NAMES:
+        pass
+        """if self.name in self.RESIDUE_NAMES:
             #This is a conventional residue
             atom_count = Counter([a.element for a in self.atoms])
             atom_count["C"] -= 2
@@ -1077,8 +1111,7 @@ class Residue:
                 print("Unconventional %s at %i on chain %s." %
                  (self.name, self.number, self.chain.name))
                 print("%s != %s" % (str(atom_count), str(self.RESIDUE_ATOMS[self.name.upper()])))
-                print("")
-
+                print("")"""
 
 
 
@@ -1089,18 +1122,10 @@ class Het(Residue):
         Residue.__init__(self, atoms, anisous)
 
 
-    def match_smiles(self, smiles):
-        #Atoms in self
+    def get_atom_counts(self):
         atoms = [atom.element for atom in self.atoms if atom.element != "H"]
-        self_atoms = Counter(atoms)
+        return Counter(atoms)
 
-
-        #Atoms in smiles
-        atoms = [atom for atom in smiles.upper() if atom.isalpha() and atom != "H"]
-        smiles_atoms = Counter(atoms)
-
-
-        return True if self_atoms == smiles_atoms else False
 
 
     def get_bind_site(self):
@@ -1266,7 +1291,7 @@ class Pdb:
         else:
             #Open file contents
             try:
-                contents = f.read()
+                contents = source.read()
                 contents.replace("\r\n", "\n")
             except UnicodeDecodeError:
                 raise NotValidPdbError("This file is not in plain text")
@@ -1282,10 +1307,10 @@ class Pdb:
         self.lines = [line for line in contents.split("\n") if line.strip() != ""]
         if narrate:
             print("There are %i lines in this file." % len(self.lines))
-        for line in self.lines[:-1]:
+        """for line in self.lines[:-1]:
             if len(line) != 80:
                 raise NotValidPdbError("Line %i is not 80 characters long" %
-                 (self.lines.index(line) + 1))
+                 (self.lines.index(line) + 1))"""
 
 
         #Turn into records
