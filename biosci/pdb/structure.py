@@ -1,3 +1,5 @@
+from collections import Counter
+
 PERIODIC_TABLE = {
  "H": 1.0079, "HE": 4.0026, "LI": 6.941, "BE": 9.0122, "B": 10.811, "C": 12.0107,
   "N": 14.0067, "O": 15.9994, "F": 18.9984, "NE": 20.1797, "NA": 22.9897, "MG": 24.305,
@@ -26,22 +28,39 @@ class PdbStructure:
     def __init__(self, pdb_data):
         self.data = pdb_data
 
-        self.models = [Model(d) for d in self.data.coordinates.models]
+        self.models = [Model(d, self.data.miscellaneous.sites, self.data.secondary_structure) for d in self.data.coordinates.models]
         self.model = self.models[0]
 
 
 
-class Model:
+class AtomicStructure:
+    """Some structure that contains atoms."""
+
+    def get_atom_by_number(self, number):
+        for atom in self.atoms:
+            if atom.number == number:
+                return atom
+
+
+    def get_atoms_by_name(self, name):
+        return [a for a in self.atoms if a.name == name]
+
+
+class Model(AtomicStructure):
     """A PDB model."""
 
-    def __init__(self, model_dict):
+    def __init__(self, model_dict, site_dicts, secondary_section):
         #Get chains
         chain_ids = sorted(list(set([a["chain_id"] for a in model_dict["atoms"] if not a["het"]])))
         self.chains = [Chain(
          [a for a in model_dict["atoms"] if a["chain_id"] == chain_id and not a["het"]],
-         [t for t in model_dict["ters"] if t["chain_id"] == chain_id]
+         [t for t in model_dict["ters"] if t["chain_id"] == chain_id],
+         [h for h in secondary_section.helices if h["start_residue_chain"] == chain_id]
         ) for chain_id in chain_ids]
         self.mass = sum([c.mass for c in self.chains])
+        self.atoms = []
+        for chain in self.chains:
+            self.atoms += chain.atoms
 
         #Get hets
         het_numbers = sorted(list(set([a["res_seq"] for a in model_dict["atoms"] if a["het"]])))
@@ -49,13 +68,37 @@ class Model:
          [a for a in model_dict["atoms"] if a["res_seq"] == het_number]
         ) for het_number in het_numbers]
         self.mass += sum([h.mass for h in self.hets])
+        for het in self.hets:
+            self.atoms += het.atoms
+
+        #Get sites
+        self.sites = [Site(s, self) for s in site_dicts]
+
+        #Get helices
+        self.helices = []
+        for chain in self.chains:
+            self.helices += chain.helices
+
+        #Get sheets
+        self.sheets = [Sheet(s, self) for s in secondary_section.sheets]
 
 
+    def get_chain_by_name(self, name):
+        for chain in self.chains:
+            if chain.name == name:
+                return chain
 
-class Chain:
+
+    def get_het_by_number(self, number):
+        for het in self.hets:
+            if het.number == number:
+                return het
+
+
+class Chain(AtomicStructure):
     "A chain of residues."
 
-    def __init__(self, atoms, termini):
+    def __init__(self, atoms, termini, helix_dicts):
         self.name = atoms[0]["chain_id"]
 
         #Get residues
@@ -63,8 +106,10 @@ class Chain:
         self.residues = [Residue(
          [a for a in atoms if a["res_seq"] == residue_number]
         ) for residue_number in residue_numbers]
+        self.atoms = []
         for residue in self.residues:
             residue.chain = self
+            self.atoms += residue.atoms
         self.mass = sum([r.mass for r in self.residues])
 
         #Specify terminating residue
@@ -73,14 +118,52 @@ class Chain:
             if matching_residue:
                 matching_residue[0].terminus = True
 
+        #Get helices
+        self.helices = [Helix(h, self) for h in helix_dicts]
+
+        self.strands = [] #Gets filled in later
+
+
 
     def __repr__(self):
         return "<Chain %s>" % self.name
 
 
+    def get_residue_by_number(self, number):
+        for residue in self.residues:
+            if residue.number == number:
+                return residue
 
-class Residue:
+
+    def get_residues_by_name(self, name):
+        return [r for r in self.residues if r.name == name]
+
+
+class Residue(AtomicStructure):
     "An amino acid residue."
+
+    RESIDUE_NAMES = {
+     "phenylalanine": ("PHE", "F"), "PHE": ("phenylalanine", "F"), "F": ("phenylalanine", "PHE"),
+      "tryptophan": ("TRP", "W"), "TRP": ("tryptophan", "W"), "W": ("tryptophan", "TRP"),
+       "methionine": ("MET", "M"), "MET": ("methionine", "M"), "M": ("methionine", "MET"),
+        "isoleucine": ("ILE", "I"), "ILE": ("isoleucine", "I"), "I": ("isoleucine", "ILE"),
+         "asparagine": ("ASN", "N"), "ASN": ("asparagine", "N"), "N": ("asparagine", "ASN"),
+          "threonine": ("THR", "T"), "THR": ("threonine", "T"), "T": ("threonine", "THR"),
+           "histidine": ("HIS", "H"), "HIS": ("histidine", "H"), "H": ("histidine", "HIS"),
+            "glutamine": ("GLN", "Q"), "GLN": ("glutamine", "Q"), "Q": ("glutamine", "GLN"),
+             "glutamate": ("GLU", "E"), "GLU": ("glutamate", "E"), "E": ("glutamate", "GLU"),
+              "aspartate": ("ASP", "D"), "ASP": ("aspartate", "D"), "D": ("aspartate", "ASP"),
+               "tyrosine": ("TYR", "Y"), "TYR": ("tyrosine", "Y"), "Y": ("tyrosine", "TYR"),
+                "cysteine": ("CYS", "C"), "CYS": ("cysteine", "C"), "C": ("cysteine", "CYS"),
+                 "arginine": ("ARG", "R"), "ARG": ("arginine", "R"), "R": ("arginine", "ARG"),
+                  "proline": ("PRO", "P"), "PRO": ("proline", "P"), "P": ("proline", "PRO"),
+                   "leucine": ("LEU", "L"), "LEU": ("leucine", "L"), "L": ("leucine", "LEU"),
+                    "glycine": ("GLY", "G"), "GLY": ("glycine", "G"), "G": ("glycine", "GLY"),
+                     "alanine": ("ALA", "A"), "ALA": ("alanine", "A"), "A": ("alanine", "ALA"),
+                      "valine": ("VAL", "V"), "VAL": ("valine", "V"), "V": ("valine", "VAL"),
+                       "serine": ("SER", "S"), "SER": ("serine", "S"), "S": ("serine", "SER"),
+                        "lysine": ("LYS", "K"), "LYS": ("lysine", "K"), "K": ("lysine", "LYS")
+    }
 
     def __init__(self, atoms):
         self.number = atoms[0]["res_seq"]
@@ -104,7 +187,7 @@ class Atom:
 
     def __init__(self, atom_dict):
         self.number = atom_dict["serial"]
-        self.name = atom_dict["serial"]
+        self.name = atom_dict["name"]
         self.insert_code = atom_dict["i_code"]
         self.x = atom_dict["x"]
         self.y = atom_dict["y"]
@@ -123,8 +206,108 @@ class Atom:
         self.mass = PERIODIC_TABLE[self.element.upper()]
 
 
+    def __repr__(self):
+        return "<%s>" % self.name
+
+
 
 class Het(Residue):
 
     def __repr__(self):
         return "<%s (%i atom%s)>" % (self.name, len(self.atoms), "" if len(self.atoms) == 1 else "s")
+
+
+    def get_atom_counts(self):
+        atoms = [atom.element.upper() for atom in self.atoms if atom.element.upper() != "H"]
+        return Counter(atoms)
+
+
+
+class Site(AtomicStructure):
+    """A collection of residues that form some structure or perform some function."""
+
+    def __init__(self, site_dict, model):
+        self.name = site_dict["name"]
+
+        self.residues = []
+        self.hets = []
+        self.atoms = []
+        for residue_dict in site_dict["residues"]:
+            chain = model.get_chain_by_name(residue_dict["chain"])
+            if chain:
+                residue = chain.get_residue_by_number(residue_dict["residue_number"])
+                if residue:
+                    self.residues.append(residue)
+                    self.atoms += residue.atoms
+            het = model.get_het_by_number(residue_dict["residue_number"])
+            if het:
+                self.hets.append(het)
+                self.atoms += het.atoms
+
+
+
+    def __repr__(self):
+        return "<%s: %s>" % (self.name, ", ".join([str(r) for r in self.residues + self.hets]))
+
+
+class Helix(Site):
+    """An alpha helix."""
+
+    CLASSES = {1: "Right-handed alpha", 2: "Right-handed omega", 3: "Right-handed pi",
+     4: "Right-handed gamma", 5: "Right-handed 3 - 10", 6: "Left-handed alpha", 7: "Left-handed omega",
+      8: "Left-handed gamma", 9: "2 - 7 ribbon/helix", 10: "Polyproline"}
+
+    def __init__(self, helix_dict, chain):
+        self.number = helix_dict["serial"]
+        self.name = helix_dict["helix_id"]
+        self.chain = chain
+        self.residues = [chain.get_residue_by_number(i) for i in
+         range(helix_dict["start_residue_number"], helix_dict["end_residue_number"] + 1)]
+        self.hets = []
+        self.helix_class = self.CLASSES[helix_dict["helix_class"] if helix_dict["helix_class"] else 1]
+        self.comment = helix_dict["comment"]
+
+
+
+class Sheet:
+    """A beta sheet."""
+
+    def __init__(self, sheet_dict, model):
+        self.name = sheet_dict["sheet_id"]
+        self.strands = [Strand(sheet_dict["strands"][0], model)]
+        for strand_dict in sheet_dict["strands"][1:]:
+            self.strands.append(Strand(strand_dict, model, self.strands[-1]))
+
+
+    def __repr__(self):
+        return "<Beta sheet %s (%i strands)>" % (self.name, len(self.strands))
+
+
+
+class Strand(Site):
+    """A beta strand."""
+
+    def __init__(self, strand_dict, model, previous_strand=None):
+        self.number = strand_dict["strand_id"]
+        self.name = self.number
+        self.chain = model.get_chain_by_name(strand_dict["start_residue_chain"])
+        self.chain.strands.append(self)
+        self.residues = [self.chain.get_residue_by_number(i) for i in
+         range(strand_dict["start_residue_number"], strand_dict["end_residue_number"] + 1)]
+        self.residues = [r for r in self.residues if r] #Important if file lists residue that doesn't exist
+        self.hets = []
+        self.atoms = []
+        for residue in self.residues:
+            self.atoms += residue.atoms
+        self.sense = strand_dict["sense"]
+
+        if previous_strand:
+            self.previous_strand = previous_strand
+            self.registration = (
+             self.get_atoms_by_name(strand_dict["reg_cur_atom"])[0]
+              if self.get_atoms_by_name(strand_dict["reg_cur_atom"]) else None,
+             self.get_atoms_by_name(strand_dict["reg_prev_atom"])[0]
+              if self.get_atoms_by_name(strand_dict["reg_prev_atom"]) else None
+            )
+        else:
+            self.previous_strand, self.registration = None, None

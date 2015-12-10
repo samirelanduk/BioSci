@@ -8,6 +8,8 @@ class PdbDataStructure:
 
         #Create the sections
         self.coordinates = CoordinateSection(self.file)
+        self.secondary_structure = SecondaryStructureSection(self.file)
+        self.miscellaneous = MiscellaneousSection(self.file)
 
 
 
@@ -37,10 +39,11 @@ class CoordinateSection(PdbSection):
             #There are seperate models specified in the PDB file
             if len(model_recs) != len(self.get_records_by_name("ENDMDL")):
                 raise PdbDataError
-            models = [[r for r in self.records if
-             r.number > model_rec.number and r.number <
-              [e for e in self.get_records_by_name("ENDMDL") if e.number > r.number][0].number]
-               for model_rec in model_recs]
+            models = []
+            for rec in model_recs:
+                end = [e for e in self.get_records_by_name("ENDMDL") if e.number > rec.number][0]
+                model = [r for r in self.records if r.number > rec.number and r.number < end.number]
+                models.append(model)
         else:
             #There is only one one model
             models = [self.records]
@@ -92,7 +95,7 @@ class CoordinateSection(PdbSection):
             #Process ANISOUs
             anisous = [r for r in model_lines if r.name == "ANISOU"]
             for anisou in anisous:
-                matching_atom = [a for a in model["atoms"] if atom["serial"] == int(a[6:11].strip())]
+                matching_atom = [a for a in model["atoms"] if a["serial"] == int(anisou[6:11].strip())]
                 if matching_atom:
                     matching_atom[0]["u11"] = int(anisou[28:35].strip()) if anisou[28:35].strip() else None
                     matching_atom[0]["u22"] = int(anisou[35:42].strip()) if anisou[35:42].strip() else None
@@ -112,3 +115,88 @@ class CoordinateSection(PdbSection):
             } for t in ters]
 
             self.models.append(model)
+
+
+
+class SecondaryStructureSection(PdbSection):
+
+    RECORD_NAMES = ("HELIX", "SHEET")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process HELIXs
+        helices = [r for r in self.records if r.name == "HELIX"]
+        self.helices = [{
+         "serial": int(l[7:10].strip()) if l[7:10].strip() else None,
+         "helix_id": l[11:14].strip() if l[11:14].strip() else None,
+         "start_residue_name": l[15:18].strip() if l[15:18].strip() else None,
+         "start_residue_chain": l[19] if l[19].strip() else None,
+         "start_residue_number": int(l[21:25].strip()) if l[21:25].strip() else None,
+         "start_residue_insert": l[25] if l[25].strip() else None,
+         "end_residue_name": l[27:30].strip() if l[27:28].strip() else None,
+         "end_residue_chain": l[31] if l[31].strip() else None,
+         "end_residue_number": int(l[33:37].strip()) if l[33:37].strip() else None,
+         "end_residue_insert": l[37] if l[37].strip() else None,
+         "helix_class": int(l[38:40].strip()) if l[38:40].strip() else None,
+         "comment": l[40:70].strip() if l[40:70].strip() else None,
+         "length": int(l[71:76].strip()) if l[71:76].strip() else None
+        } for l in helices]
+
+        #Process SHEETs
+        sheet_lines = [r for r in self.records if r.name == "SHEET"]
+        sheets = list(set([l[11:14].strip() for l in sheet_lines]))
+        self.sheets = []
+        for sheet in sheets:
+            lines = [l for l in sheet_lines if l[11:14].strip() == sheet]
+            strands = [{
+             "strand_id": int(l[7:10].strip()) if l[7:10].strip() else None,
+             "start_residue_name": l[17:20].strip() if l[17:20].strip() else None,
+             "start_residue_chain": l[21] if l[21].strip() else None,
+             "start_residue_number": int(l[22:26].strip()) if l[22:26].strip() else None,
+             "start_residue_insert": l[26] if l[26].strip() else None,
+             "end_residue_name": l[28:31].strip() if l[28:31].strip() else None,
+             "end_residue_chain": l[32] if l[32].strip() else None,
+             "end_residue_number": int(l[33:37].strip()) if l[33:37].strip() else None,
+             "end_residue_insert": l[37] if l[37].strip() else None,
+             "sense": int(l[38:40].strip()) if l[38:40].strip() else None,
+             "reg_cur_atom": l[41:45].strip() if l[41:45].strip() else None,
+             "reg_cur_residue": l[45:48] if l[45:48].strip() else None,
+             "reg_cur_chain": l[49] if l[49].strip() else None,
+             "reg_cur_number": int(l[50:54].strip()) if l[50:54].strip() else None,
+             "reg_cur_insert": l[54] if l[54].strip() else None,
+             "reg_prev_atom": l[56:60].strip() if l[56:60].strip() else None,
+             "reg_prev_residue": l[60:63] if l[60:63].strip() else None,
+             "reg_prev_chain": l[64] if l[64].strip() else None,
+             "reg_prev_number": int(l[65:69].strip()) if l[65:69].strip() else None,
+             "reg_prev_insert": l[69] if l[69] else None
+            } for l in lines]
+            self.sheets.append({"sheet_id":sheet, "strands":strands})
+
+
+
+class MiscellaneousSection(PdbSection):
+
+    RECORD_NAMES = ("SITE")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process SITEs
+        sites = [r for r in self.records if r.name == "SITE"]
+        site_names = sorted(list(set([s[11:14].strip() for s in sites])))
+        self.sites = []
+        for name in site_names:
+            lines = [r for r in sites if r[11:14].strip() == name]
+            site = {"name": name, "residues": []}
+            for line in lines:
+                for x in (1,2,3,4):
+                    if line[(11 * x) + 7: (11 * x) + 16].strip():
+                        site["residues"].append({
+                         "chain": line[(x+1) * 11] if line[(x+1) * 11].strip() else None,
+                         "residue_name": line[(11 * x) + 7: (11 * x) + 10].strip()
+                          if line[(11 * x) + 7: (11 * x) + 10].strip() else None,
+                         "residue_number": int(line[(11 * (x+1)) + 1: (11 * (x+1)) + 5].strip()) if
+                          line[(11 * (x+1)) + 1: (11 * (x+1)) + 5].strip() else None
+                        })
+            self.sites.append(site)

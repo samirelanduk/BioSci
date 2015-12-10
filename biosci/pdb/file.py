@@ -10,7 +10,8 @@ VALID_RECORDS = ("HEADER", "OBSLTE", "TITLE", "SPLT", "CAVEAT", "COMPND", "SOURC
        "CRYST1", "MTRIX1", "MTRIX2", "MTRIX3", "ORIGX1", "ORIGX2", "ORIGX3", "SCALE1", "SCALE2", "SCALE3",
         "MODEL", "ATOM", "ANISOU", "TER", "HETATM", "ENDMDL",
          "CONECT",
-          "MASTER", "END")
+          "MASTER", "END",
+           "HYDBND", "SLTBRG")
 
 class PdbFile:
     """A representation of the PDB file itself, not the structure it represents."""
