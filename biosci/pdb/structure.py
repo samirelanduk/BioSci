@@ -36,6 +36,15 @@ class PdbStructure:
 class AtomicStructure:
     """Some structure that contains atoms."""
 
+    def __init__(self, atoms):
+        self.atoms = atoms
+        self.mass = sum([a.mass for a in self.atoms])
+
+
+    def __repr__(self):
+        return ", ".join([str(a) for a in self.atoms])
+
+
     def get_atom_by_number(self, number):
         for atom in self.atoms:
             if atom.number == number:
@@ -44,6 +53,68 @@ class AtomicStructure:
 
     def get_atoms_by_name(self, name):
         return [a for a in self.atoms if a.name == name]
+
+
+    def get_atoms_by_element(self, element):
+        return [a for a in self.atoms if a.element == element]
+
+
+    def get_atom_counts(self):
+        atoms = [atom.element.upper() for atom in self.atoms if atom.element.upper() != "H"]
+        return Counter(atoms)
+
+
+
+class ResiduicStructure(AtomicStructure):
+    """Some structure that contains residues."""
+
+    def __init__(self, residues):
+        self.residues = residues
+        atoms = []
+        for residue in self.residues:
+            atoms += residue.atoms
+        AtomicStructure.__init__(self, atoms)
+
+
+    def __repr__(self):
+        return ", ".join([str(r) for r in self.residues])
+
+
+    def get_residues_by_chain(self, chain_id):
+        return [r for r in self.residues if r.chain.name == chain_id]
+
+
+    def get_residues_by_name(self, name):
+        return [r for r in self.residues if r.name == name]
+
+
+    def get_residue_by_number(self, number):
+        """Returns the first residue with a matching number."""
+        for residue in self.residues:
+            if residue.number == number:
+                return residue
+
+
+    def get_residues_by_number(self, number):
+        """Returns all residues with matching number."""
+        return [r for r in self.residues if r.number == number]
+
+
+    def get_continuous_sequence(self):
+        """If all the residues are on the same chain, return an unbroken
+        string of residues that contains all residues in this orginal structure."""
+
+        if len(self.residues) > 1:
+            if all([r.chain is self.residues[0].chain for r in self.residues[1:]]):
+                #All residues are on the same chain
+                return ResiduicStructure(
+                 [r for r in self.residues[0].chain.residues if
+                  r.number >= min([res.number for res in self.residues]) and
+                   r.number <= max([res.number for res in self.residues])]
+                )
+        else:
+            return self
+
 
 
 class Model(AtomicStructure):
@@ -57,22 +128,21 @@ class Model(AtomicStructure):
          [t for t in model_dict["ters"] if t["chain_id"] == chain_id],
          [h for h in secondary_section.helices if h["start_residue_chain"] == chain_id]
         ) for chain_id in chain_ids]
-        self.mass = sum([c.mass for c in self.chains])
-        self.atoms = []
+        atoms = []
         for chain in self.chains:
-            self.atoms += chain.atoms
+            atoms += chain.atoms
 
         #Get hets
         het_numbers = sorted(list(set([a["res_seq"] for a in model_dict["atoms"] if a["het"]])))
         self.hets = [Het(
          [a for a in model_dict["atoms"] if a["res_seq"] == het_number]
         ) for het_number in het_numbers]
-        self.mass += sum([h.mass for h in self.hets])
         for het in self.hets:
-            self.atoms += het.atoms
+            atoms += het.atoms
+        AtomicStructure.__init__(self, atoms)
 
         #Get sites
-        self.sites = [Site(s, self) for s in site_dicts]
+        self.pdb_sites = [PdbSite(s, self) for s in site_dicts]
 
         #Get helices
         self.helices = []
@@ -81,6 +151,10 @@ class Model(AtomicStructure):
 
         #Get sheets
         self.sheets = [Sheet(s, self) for s in secondary_section.sheets]
+
+
+    def __repr__(self):
+        return "<Model (%i atoms)>" % len(self.atoms)
 
 
     def get_chain_by_name(self, name):
@@ -95,7 +169,7 @@ class Model(AtomicStructure):
                 return het
 
 
-class Chain(AtomicStructure):
+class Chain(ResiduicStructure):
     "A chain of residues."
 
     def __init__(self, atoms, termini, helix_dicts):
@@ -103,14 +177,12 @@ class Chain(AtomicStructure):
 
         #Get residues
         residue_numbers = sorted(list(set([a["res_seq"] for a in atoms])))
-        self.residues = [Residue(
+        residues = [Residue(
          [a for a in atoms if a["res_seq"] == residue_number]
         ) for residue_number in residue_numbers]
-        self.atoms = []
+        ResiduicStructure.__init__(self, residues)
         for residue in self.residues:
             residue.chain = self
-            self.atoms += residue.atoms
-        self.mass = sum([r.mass for r in self.residues])
 
         #Specify terminating residue
         if len(termini) == 1:
@@ -126,17 +198,8 @@ class Chain(AtomicStructure):
 
 
     def __repr__(self):
-        return "<Chain %s>" % self.name
+        return "<Chain %s (%i residues)>" % (self.name, len(self.residues))
 
-
-    def get_residue_by_number(self, number):
-        for residue in self.residues:
-            if residue.number == number:
-                return residue
-
-
-    def get_residues_by_name(self, name):
-        return [r for r in self.residues if r.name == name]
 
 
 class Residue(AtomicStructure):
@@ -171,14 +234,13 @@ class Residue(AtomicStructure):
         self.terminus = False
 
         #Get atoms
-        self.atoms = [Atom(a) for a in atoms]
+        AtomicStructure.__init__(self, [Atom(a) for a in atoms])
         for atom in self.atoms:
             atom.molecule = self
-        self.mass = sum([a.mass for a in self.atoms])
 
 
     def __repr__(self):
-        return "<%s (%i)>" % (self.name, self.number)
+        return "<%s (%s%i)>" % (self.name, self.chain.name, self.number)
 
 
 
@@ -211,46 +273,50 @@ class Atom:
 
 
 
-class Het(Residue):
+class Het(AtomicStructure):
+    """A ligand or other non-polymeric molecule (including solvents)."""
+
+    def __init__(self, atoms):
+        self.number = atoms[0]["res_seq"]
+        self.name = atoms[0]["res_name"]
+
+        #Get atoms
+        AtomicStructure.__init__(self, [Atom(a) for a in atoms])
+        for atom in self.atoms:
+            atom.molecule = self
+
 
     def __repr__(self):
         return "<%s (%i atom%s)>" % (self.name, len(self.atoms), "" if len(self.atoms) == 1 else "s")
 
 
-    def get_atom_counts(self):
-        atoms = [atom.element.upper() for atom in self.atoms if atom.element.upper() != "H"]
-        return Counter(atoms)
 
 
-
-class Site(AtomicStructure):
-    """A collection of residues that form some structure or perform some function."""
+class PdbSite(ResiduicStructure):
+    """A site named in the PDB file."""
 
     def __init__(self, site_dict, model):
         self.name = site_dict["name"]
 
-        self.residues = []
+        residues = []
         self.hets = []
-        self.atoms = []
         for residue_dict in site_dict["residues"]:
             chain = model.get_chain_by_name(residue_dict["chain"])
             if chain:
                 residue = chain.get_residue_by_number(residue_dict["residue_number"])
                 if residue:
-                    self.residues.append(residue)
-                    self.atoms += residue.atoms
+                    residues.append(residue)
             het = model.get_het_by_number(residue_dict["residue_number"])
             if het:
                 self.hets.append(het)
-                self.atoms += het.atoms
-
+        ResiduicStructure.__init__(self, residues)
 
 
     def __repr__(self):
         return "<%s: %s>" % (self.name, ", ".join([str(r) for r in self.residues + self.hets]))
 
 
-class Helix(Site):
+class Helix(ResiduicStructure):
     """An alpha helix."""
 
     CLASSES = {1: "Right-handed alpha", 2: "Right-handed omega", 3: "Right-handed pi",
@@ -261,15 +327,16 @@ class Helix(Site):
         self.number = helix_dict["serial"]
         self.name = helix_dict["helix_id"]
         self.chain = chain
-        self.residues = [chain.get_residue_by_number(i) for i in
+        residues = [chain.get_residue_by_number(i) for i in
          range(helix_dict["start_residue_number"], helix_dict["end_residue_number"] + 1)]
-        self.hets = []
+        residues = [r for r in residues if r] #Important if file lists residue that doesn't exist
+        ResiduicStructure.__init__(self, residues)
         self.helix_class = self.CLASSES[helix_dict["helix_class"] if helix_dict["helix_class"] else 1]
         self.comment = helix_dict["comment"]
 
 
 
-class Sheet:
+class Sheet(ResiduicStructure):
     """A beta sheet."""
 
     def __init__(self, sheet_dict, model):
@@ -277,6 +344,10 @@ class Sheet:
         self.strands = [Strand(sheet_dict["strands"][0], model)]
         for strand_dict in sheet_dict["strands"][1:]:
             self.strands.append(Strand(strand_dict, model, self.strands[-1]))
+        residues = []
+        for strand in self.strands:
+            residues += strand.residues
+        ResiduicStructure.__init__(self, residues)
 
 
     def __repr__(self):
@@ -284,7 +355,7 @@ class Sheet:
 
 
 
-class Strand(Site):
+class Strand(ResiduicStructure):
     """A beta strand."""
 
     def __init__(self, strand_dict, model, previous_strand=None):
@@ -292,13 +363,10 @@ class Strand(Site):
         self.name = self.number
         self.chain = model.get_chain_by_name(strand_dict["start_residue_chain"])
         self.chain.strands.append(self)
-        self.residues = [self.chain.get_residue_by_number(i) for i in
+        residues = [self.chain.get_residue_by_number(i) for i in
          range(strand_dict["start_residue_number"], strand_dict["end_residue_number"] + 1)]
-        self.residues = [r for r in self.residues if r] #Important if file lists residue that doesn't exist
-        self.hets = []
-        self.atoms = []
-        for residue in self.residues:
-            self.atoms += residue.atoms
+        residues = [r for r in residues if r] #Important if file lists residue that doesn't exist
+        ResiduicStructure.__init__(self, residues)
         self.sense = strand_dict["sense"]
 
         if previous_strand:
