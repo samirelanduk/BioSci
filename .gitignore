@@ -2,4 +2,5 @@ MANIFEST
 dist
 biosci/*.pyc
 biosci/__pycache__
-
+*test.py
+*.mol2
