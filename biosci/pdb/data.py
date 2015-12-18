@@ -8,6 +8,7 @@ class PdbDataStructure:
 
         #Create the sections
         self.secondary_structure = SecondaryStructureSection(self.file)
+        self.connectivity_annotation = ConnectivityAnnotationSection(self.file)
         self.miscellaneous = MiscellaneousSection(self.file)
         self.crystal = CrystalSection(self.file)
         self.coordinates = CoordinateSection(self.file)
@@ -37,7 +38,7 @@ class SecondaryStructureSection(PdbSection):
         PdbSection.__init__(self, *args, **kwargs)
 
         #Process HELIXs
-        helices = [r for r in self.records if r.name == "HELIX"]
+        helices = self.get_records_by_name("HELIX")
         self.helices = [{
          "serial": int(l[7:10].strip()) if l[7:10].strip() else None,
          "helix_id": l[11:14].strip() if l[11:14].strip() else None,
@@ -55,7 +56,7 @@ class SecondaryStructureSection(PdbSection):
         } for l in helices]
 
         #Process SHEETs
-        sheet_lines = [r for r in self.records if r.name == "SHEET"]
+        sheet_lines = self.get_records_by_name("SHEET")
         sheets = list(set([l[11:14].strip() for l in sheet_lines]))
         self.sheets = []
         for sheet in sheets:
@@ -86,6 +87,64 @@ class SecondaryStructureSection(PdbSection):
 
 
 
+class ConnectivityAnnotationSection(PdbSection):
+
+    RECORD_NAMES = ("SSBOND", "LINK", "CISPEP")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process SSBONDs
+        ssbonds = self.get_records_by_name("SSBOND")
+        self.ssbonds = [{
+         "serial_num": int(s[7:10].strip()) if s[7:10].strip() else None,
+         "residue_1_name": s[11:14].strip() if s[11:14].strip() else None,
+         "residue_1_chain": s[15] if s[15].strip() else None,
+         "residue_1_number": int(s[17:21].strip()) if s[17:21].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_1_symmetry": s[59:65].strip() if s[59:65].strip() else None,
+         "residue_2_name": s[25:28].strip() if s[25:28].strip() else None,
+         "residue_2_chain": s[29] if s[29].strip() else None,
+         "residue_2_number": int(s[31:35].strip()) if s[31:35].strip() else None,
+         "residue_2_symmetry": s[66:72].strip() if s[59:65].strip() else None,
+         "residue_2_insert": s[35] if s[35].strip() else None,
+         "disulfide_distance": float(s[73:78].strip()) if s[73:78].strip() else None
+        } for s in ssbonds]
+
+        #Process LINKs
+        links = self.get_records_by_name("LINK")
+        self.links = [{
+         "residue_1_atom": s[12:16].strip() if s[12:16].strip() else None,
+         "residue_1_name": s[17:20].strip() if s[17:20].strip() else None,
+         "residue_1_chain": s[21] if s[21].strip() else None,
+         "residue_1_number": int(s[22:26].strip()) if s[22:26].strip() else None,
+         "residue_1_symmetry": s[59:65].strip() if s[59:65].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_2_atom": s[42:46].strip() if s[42:46].strip() else None,
+         "residue_2_name": s[47:50].strip() if s[47:50].strip() else None,
+         "residue_2_chain": s[51] if s[51].strip() else None,
+         "residue_2_number": int(s[52:56].strip()) if s[52:56].strip() else None,
+         "residue_2_symmetry": s[66:72].strip() if s[59:65].strip() else None,
+         "link_distance": float(s[73:78].strip()) if s[73:78].strip() else None
+        } for s in links]
+
+        #Process CISPEPs
+        cispeps = self.get_records_by_name("CISPEP")
+        self.cispeps = [{
+         "serial_num": int(s[7:10].strip()) if s[7:10].strip() else None,
+         "residue_1_name": s[11:14].strip() if s[11:14].strip() else None,
+         "residue_1_chain": s[15] if s[15].strip() else None,
+         "residue_1_number": int(s[17:21].strip()) if s[17:21].strip() else None,
+         "residue_1_insert": s[21] if s[21].strip() else None,
+         "residue_2_name": s[25:28].strip() if s[25:28].strip() else None,
+         "residue_2_chain": s[29] if s[29].strip() else None,
+         "residue_2_number": int(s[31:35].strip()) if s[31:35].strip() else None,
+         "residue_2_insert": s[35] if s[35].strip() else None,
+         "modnum": int(s[43:46].strip()) if s[43:46].strip() else None,
+         "angle_measure": float(s[53:59].strip()) if s[53:59].strip() else None
+        } for s in cispeps]
+
+
 class MiscellaneousSection(PdbSection):
 
     RECORD_NAMES = ("SITE")
@@ -94,7 +153,7 @@ class MiscellaneousSection(PdbSection):
         PdbSection.__init__(self, *args, **kwargs)
 
         #Process SITEs
-        sites = [r for r in self.records if r.name == "SITE"]
+        sites = self.get_records_by_name("SITE")
         site_names = sorted(list(set([s[11:14].strip() for s in sites])))
         self.sites = []
         for name in site_names:
@@ -124,7 +183,7 @@ class CrystalSection(PdbSection):
         PdbSection.__init__(self, *args, **kwargs)
 
         #Process CRYST1
-        cryst1 = [r for r in self.records if r.name == "CRYST1"]
+        cryst1 = self.get_records_by_name("CRYST1")
         if len(cryst1) == 0:
             self.a, self.b, self.c, self.alpha, self.beta, self.gamma, self.s_group, self.z = (
              None, None, None, None, None, None, None, None)
@@ -140,9 +199,9 @@ class CrystalSection(PdbSection):
             self.z = int(cryst1[66:70].strip()) if cryst1[66:70].strip() else None
 
         #Process ORIGXns
-        origx1 = [r for r in self.records if r.name == "ORIGX1"]
-        origx2 = [r for r in self.records if r.name == "ORIGX2"]
-        origx3 = [r for r in self.records if r.name == "ORIGX3"]
+        origx1 = self.get_records_by_name("ORIGX1")
+        origx2 = self.get_records_by_name("ORIGX2")
+        origx3 = self.get_records_by_name("ORIGX3")
         if len(origx1) == 0:
             self.o11, self.o12, self.o13, self.t1 = None, None, None, None
         else:
@@ -169,9 +228,9 @@ class CrystalSection(PdbSection):
             self.t3 = float(origx3[45:55].strip()) if origx3[45:55].strip() else None
 
         #Process SCALEns
-        scale1 = [r for r in self.records if r.name == "SCALE1"]
-        scale2 = [r for r in self.records if r.name == "SCALE2"]
-        scale3 = [r for r in self.records if r.name == "SCALE3"]
+        scale1 = self.get_records_by_name("SCALE1")
+        scale2 = self.get_records_by_name("SCALE2")
+        scale3 = self.get_records_by_name("SCALE3")
         if len(scale1) == 0:
             self.s11, self.s12, self.s13, self.u1 = None, None, None, None
         else:
@@ -198,9 +257,9 @@ class CrystalSection(PdbSection):
             self.u3 = float(scale3[45:55].strip()) if scale3[45:55].strip() else None
 
         #Process MTRIXns
-        mtrix1 = [r for r in self.records if r.name == "MTRIX1"]
-        mtrix2 = [r for r in self.records if r.name == "MTRIX2"]
-        mtrix3 = [r for r in self.records if r.name == "MTRIX3"]
+        mtrix1 = self.get_records_by_name("MTRIX1")
+        mtrix2 = self.get_records_by_name("MTRIX2")
+        mtrix3 = self.get_records_by_name("MTRIX3")
         if len(mtrix1) == 0:
             self.m11, self.m12, self.m13, self.v1 = None, None, None, None
         else:
