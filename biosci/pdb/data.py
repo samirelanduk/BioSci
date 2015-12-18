@@ -12,6 +12,7 @@ class PdbDataStructure:
         self.crystal = CrystalSection(self.file)
         self.coordinates = CoordinateSection(self.file)
         self.connectivity = ConnectivitySection(self.file)
+        self.bookkeeping = BookkeepingSection(self.file)
 
 
 
@@ -320,7 +321,7 @@ class CoordinateSection(PdbSection):
 
 class ConnectivitySection(PdbSection):
 
-    RECORD_NAMES = ["CONECT"]
+    RECORD_NAMES = ("CONECT")
 
     def __init__(self, *args, **kwargs):
         PdbSection.__init__(self, *args, **kwargs)
@@ -341,3 +342,42 @@ class ConnectivitySection(PdbSection):
                 if string[15:20].strip():
                     atom["bonded_atoms"].append(int(string[15:20].strip()))
             self.atoms.append(atom)
+
+
+
+class BookkeepingSection(PdbSection):
+
+    RECORD_NAMES = ("MASTER", "END")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process MASTER
+        master = self.get_records_by_name("MASTER")
+        if master:
+            master = master[0]
+            self.num_remark = int(master[10:15].strip()) if master[10:15].strip() else None
+            self.num_het = int(master[20:25].strip()) if master[20:25].strip() else None
+            self.num_helix = int(master[25:30].strip()) if master[25:30].strip() else None
+            self.num_sheet = int(master[30:35].strip()) if master[30:35].strip() else None
+            self.num_site = int(master[40:45].strip()) if master[40:45].strip() else None
+            self.num_xform = int(master[45:50].strip()) if master[45:50].strip() else None
+            self.num_coord = int(master[50:55].strip()) if master[50:55].strip() else None
+            self.num_ter = int(master[55:60].strip()) if master[55:60].strip() else None
+            self.num_conect = int(master[60:65].strip()) if master[60:65].strip() else None
+            self.num_seq = int(master[65:70].strip()) if master[65:70].strip() else None
+        else:
+            self.num_remark = None
+            self.num_het = None
+            self.num_helix = None
+            self.num_sheet = None
+            self.num_site = None
+            self.num_xform = None
+            self.num_coord = None
+            self.num_ter = None
+            self.num_conect = None
+            self.num_seq = None
+
+        #Process END
+        if not self.get_records_by_name("END"):
+            raise PdbDataError("This PDB has no END")
