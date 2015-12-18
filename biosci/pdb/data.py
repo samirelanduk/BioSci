@@ -7,9 +7,11 @@ class PdbDataStructure:
         self.file = pdb_file
 
         #Create the sections
-        self.coordinates = CoordinateSection(self.file)
         self.secondary_structure = SecondaryStructureSection(self.file)
         self.miscellaneous = MiscellaneousSection(self.file)
+        self.crystal = CrystalSection(self.file)
+        self.coordinates = CoordinateSection(self.file)
+        self.connectivity = ConnectivitySection(self.file)
 
 
 
@@ -137,9 +139,9 @@ class CrystalSection(PdbSection):
             self.z = int(cryst1[66:70].strip()) if cryst1[66:70].strip() else None
 
         #Process ORIGXns
-        origx1 = [r for r in records if r.name == "ORIGX1"]
-        origx2 = [r for r in records if r.name == "ORIGX2"]
-        origx3 = [r for r in records if r.name == "ORIGX3"]
+        origx1 = [r for r in self.records if r.name == "ORIGX1"]
+        origx2 = [r for r in self.records if r.name == "ORIGX2"]
+        origx3 = [r for r in self.records if r.name == "ORIGX3"]
         if len(origx1) == 0:
             self.o11, self.o12, self.o13, self.t1 = None, None, None, None
         else:
@@ -166,9 +168,9 @@ class CrystalSection(PdbSection):
             self.t3 = float(origx3[45:55].strip()) if origx3[45:55].strip() else None
 
         #Process SCALEns
-        scale1 = [r for r in records if r.name == "SCALE1"]
-        scale2 = [r for r in records if r.name == "SCALE2"]
-        scale3 = [r for r in records if r.name == "SCALE3"]
+        scale1 = [r for r in self.records if r.name == "SCALE1"]
+        scale2 = [r for r in self.records if r.name == "SCALE2"]
+        scale3 = [r for r in self.records if r.name == "SCALE3"]
         if len(scale1) == 0:
             self.s11, self.s12, self.s13, self.u1 = None, None, None, None
         else:
@@ -195,9 +197,9 @@ class CrystalSection(PdbSection):
             self.u3 = float(scale3[45:55].strip()) if scale3[45:55].strip() else None
 
         #Process MTRIXns
-        mtrix1 = [r for r in records if r.name == "MTRIX1"]
-        mtrix2 = [r for r in records if r.name == "MTRIX2"]
-        mtrix3 = [r for r in records if r.name == "MTRIX3"]
+        mtrix1 = [r for r in self.records if r.name == "MTRIX1"]
+        mtrix2 = [r for r in self.records if r.name == "MTRIX2"]
+        mtrix3 = [r for r in self.records if r.name == "MTRIX3"]
         if len(mtrix1) == 0:
             self.m11, self.m12, self.m13, self.v1 = None, None, None, None
         else:
@@ -314,3 +316,28 @@ class CoordinateSection(PdbSection):
             } for t in ters]
 
             self.models.append(model)
+
+
+class ConnectivitySection(PdbSection):
+
+    RECORD_NAMES = ["CONECT"]
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process CONECTs
+        atoms = list(set([int(r[6:11].strip()) for r in self.records]))
+        self.atoms = []
+        for atom_id in atoms:
+            atom = {"atom_id": atom_id, "bonded_atoms": []}
+            strings = [r[11:31] for r in self.records if r[6:11].strip() == str(atom_id)]
+            for string in strings:
+                if string[:5].strip():
+                    atom["bonded_atoms"].append(int(string[:5].strip()))
+                if string[5:10].strip():
+                    atom["bonded_atoms"].append(int(string[5:10].strip()))
+                if string[10:15].strip():
+                    atom["bonded_atoms"].append(int(string[10:15].strip()))
+                if string[15:20].strip():
+                    atom["bonded_atoms"].append(int(string[15:20].strip()))
+            self.atoms.append(atom)
