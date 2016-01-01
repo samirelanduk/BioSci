@@ -1,4 +1,5 @@
 from .exceptions import *
+import datetime
 
 class PdbDataStructure:
     """A processed PdbFile, mostly in dictionary form"""
@@ -7,6 +8,7 @@ class PdbDataStructure:
         self.file = pdb_file
 
         #Create the sections
+        self.title = TitleSection(self.file)
         self.secondary_structure = SecondaryStructureSection(self.file)
         self.connectivity_annotation = ConnectivityAnnotationSection(self.file)
         self.miscellaneous = MiscellaneousSection(self.file)
@@ -27,6 +29,74 @@ class PdbSection:
 
     def get_records_by_name(self, name):
         return [r for r in self.records if r.name.upper() == name.upper()]
+
+
+
+class TitleSection(PdbSection):
+
+    RECORD_NAMES = ("HEADER", "OBSLTE", "TITLE", "SPLT", "CAVEAT", "COMPND",
+     "SOURCE", "KEYWDS", "EXPDTA", "NUMMDL", "MDLTYP", "AUTHOR", "REVDAT",
+      "SPRSDE", "JRNL", "REMARK")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process HEADER
+        headers = self.get_records_by_name("HEADER")
+        if headers:
+            header = headers[0]
+            self.classification = header[10:50].strip() if header[10:50].strip() else None
+            self.date = datetime.datetime.strptime(header[50:59].strip(), "%d-%b-%y") if header[50:59].strip() else None
+            self.code = header[62:66] if header[62:66].strip() else None
+        else:
+            self.classification, self.date, self.code = None, None, None
+
+        #Process OBSLTE
+        obsolete = self.get_records_by_name("OBSLTE")
+        self.obsolete = bool(obsolete)
+
+        #Process TITLE
+        title = self.get_records_by_name("TITLE")
+        self.title = " ".join([r[10:].strip() for r in title]).strip().replace("  ", " ").strip()
+
+        #Process SPLIT
+        splits = self.get_records_by_name("SPLIT")
+        self.split_codes = []
+        for r in splits:
+            for i in range(13):
+                code = r[((i+2) * 5) + 1: ((i+2) * 5) + 5]
+                if code.strip(): self.split_codes.append(code)
+
+        #Process CAVEATs
+        caveat = self.get_records_by_name("CAVEAT")
+        self.caveat = " ".join([r[19:].strip() for r in caveat]).strip().replace("  ", " ").strip()
+
+        #Process COMPND
+        def get_compnd_pair(r):
+            return [s.strip().replace(";", "") for s in r[10:].split(":")]
+
+        compnds = self.get_records_by_name("COMPND")
+        self.compounds = []
+        current_compound = {}
+        for r in compnds:
+            if get_compnd_pair(r)[0] == "MOL_ID":
+                self.compounds.append(current_compound)
+                current_compound = {}
+            current_compound[get_compnd_pair(r)[0]] = get_compnd_pair(r)[1]
+        self.compounds.append(current_compound)
+        self.compounds = [c for c in self.compounds if c]
+        for compound in self.compounds:
+            for key in compound:
+                try:
+                    compound[key] = int(compound[key])
+                except ValueError:
+                    pass
+                if compound[key] == "YES":
+                    compound[key] = True
+                if compound[key] == "NO":
+                    compound[key] = False
+                if key == "CHAIN":
+                    compound[key] = compound[key].replace(" ", "").split(",")
 
 
 
