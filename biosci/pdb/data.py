@@ -46,7 +46,7 @@ class TitleSection(PdbSection):
         if headers:
             header = headers[0]
             self.classification = header[10:50].strip() if header[10:50].strip() else None
-            self.date = datetime.datetime.strptime(header[50:59].strip(), "%d-%b-%y") if header[50:59].strip() else None
+            self.date = datetime.datetime.strptime(header[50:59].strip(), "%d-%b-%y").date() if header[50:59].strip() else None
             self.code = header[62:66] if header[62:66].strip() else None
         else:
             self.classification, self.date, self.code = None, None, None
@@ -72,17 +72,16 @@ class TitleSection(PdbSection):
         self.caveat = " ".join([r[19:].strip() for r in caveat]).strip().replace("  ", " ").strip()
 
         #Process COMPND
-        def get_compnd_pair(r):
-            return [s.strip().replace(";", "") for s in r[10:].split(":")]
-
         compnds = self.get_records_by_name("COMPND")
+        compound_text = " ".join([r[10:].strip() for r in compnds]).replace("  ", " ").replace("; ", ";").replace(": ", ":")
+        pairs = [p.split(":") for p in compound_text.split(";")]
         self.compounds = []
         current_compound = {}
-        for r in compnds:
-            if get_compnd_pair(r)[0] == "MOL_ID":
+        for pair in pairs:
+            if pair[0] == "MOL_ID":
                 self.compounds.append(current_compound)
                 current_compound = {}
-            current_compound[get_compnd_pair(r)[0]] = get_compnd_pair(r)[1]
+            current_compound[pair[0]] = pair[1]
         self.compounds.append(current_compound)
         self.compounds = [c for c in self.compounds if c]
         for compound in self.compounds:
@@ -97,6 +96,155 @@ class TitleSection(PdbSection):
                     compound[key] = False
                 if key == "CHAIN":
                     compound[key] = compound[key].replace(" ", "").split(",")
+
+        #Process SOURCE
+        sources = self.get_records_by_name("SOURCE")
+        source_text = " ".join([r[10:].strip() for r in sources]).replace("  ", " ").replace("; ", ";").replace(": ", ":")
+        pairs = [p.split(":") for p in source_text.split(";")]
+        self.sources = []
+        current_source = {}
+        for pair in pairs:
+            if pair[0] == "MOL_ID":
+                self.sources.append(current_source)
+                current_source = {}
+            current_source[pair[0]] = pair[1]
+        self.sources.append(current_source)
+        self.sources = [c for c in self.sources if c]
+        for source in self.sources:
+            for key in source:
+                try:
+                    source[key] = int(source[key])
+                except ValueError:
+                    pass
+                if source[key] == "YES":
+                    source[key] = True
+                if source[key] == "NO":
+                    source[key] = False
+
+        #Process KEYWDS
+        keywords = self.get_records_by_name("KEYWDS")
+        keyword_text = " ".join([r[10:].strip() for r in keywords]).replace("  ", " ").replace(", ", ",")
+        self.keywords = keyword_text.split(",")
+
+        #Process EXPDTA
+        expdata = self.get_records_by_name("EXPDTA")
+        self.experimental_techniques = []
+        for r in expdata:
+            self.experimental_techniques.append(r[10:].strip().replace("; ", ";").split(";"))
+
+        #Process NUMMDL
+        nummdl = self.get_records_by_name("NUMMDL")
+        if nummdl:
+            self.model_number = int(nummdl[10:14].strip()) if nummdl[10:14].strip() else 1
+        else:
+            self.model_number = 1
+
+        #Process MDLTYP
+        mdltyp = self.get_records_by_name("MDLTYP")
+        self.model_info = []
+        current_info = []
+        for r in mdltyp:
+            if not r[8:10].strip() or int(r[8:10].strip()) == 1:
+                self.model_info.append(current_info)
+                current_info = []
+            current_info.append(r[10:].strip().replace("; ", ";").split(";"))
+        self.model_info = [i for i in self.model_info if i]
+
+        #Process AUTHOR
+        authors = self.get_records_by_name("AUTHOR")
+        author_text = " ".join([r[10:].strip() for r in authors]).replace("  ", " ").replace(", ", ",")
+        self.authors = author_text.split(",")
+
+        #Process REVDAT
+        revdats = self.get_records_by_name("REVDAT")
+        self.modifications = []
+        current_modification = {"details": []}
+        for r in revdats:
+            if not r[10:12].strip() or int(r[10:12].strip()) == 1:
+                self.modifications.append(current_modification)
+                current_modification = {"details": []}
+                current_modification["date"] = datetime.datetime.strptime(r[13:22].strip(), "%d-%b-%y").date()
+                current_modification["code"] = r[23:27] if r[23:27].strip() else None
+                current_modification["type"] = int(r[31]) if r[31] else 1
+            if r[39:45].strip():
+                current_modification["details"].append(r[39:45].strip())
+            if r[46:52].strip():
+                current_modification["details"].append(r[46:52].strip())
+            if r[53:59].strip():
+                current_modification["details"].append(r[53:59].strip())
+            if r[60:66].strip():
+                current_modification["details"].append(r[60:66].strip())
+        self.modifications = [m for m in self.modifications if "date" in m.keys()]
+
+        #Process SPRSDE
+        sprsde = self.get_records_by_name("SPRSDE")
+        self.superceded = []
+        current_supercede = {"olds": []}
+        for r in sprsde:
+            if not r[8:10].strip() or int(r[10:12].strip()) == 1:
+                self.superceded.append(current_supercede)
+                current_supercede = {"olds": []}
+                current_supercede["date"] = datetime.datetime.strptime(r[11:20].strip(), "%d-%b-%y").date()
+                current_supercede["code"] = r[21:25] if r[23:27].strip() else None
+            for s in range(9):
+                if r[((s + 6) * 5) + 1: ((s + 6) * 5) + 5].strip():
+                    current_supercede["olds"].append(r[((s + 6) * 5) + 1: ((s + 6) * 5) + 5].strip())
+        self.superceded = [s for s in self.superceded if "date" in s.keys()]
+
+        #Process JRNL
+        jrnl = self.get_records_by_name("JRNL")
+        if jrnl:
+            self.journal = {}
+            author_text = " ".join([r[19:].strip() for r in jrnl if r[12:16] == "AUTH"]
+             ).replace("  ", " ").replace(", ", ",")
+            self.journal["authors"] = author_text.split(",")
+            self.journal["title"] = " ".join([r[19:].strip() for r in jrnl if r[12:16] == "TITL"]
+             ).replace("  ", " ")
+            editor_text = " ".join([r[19:].strip() for r in jrnl if r[12:16] == "EDIT"]
+             ).replace("  ", " ").replace(", ", ",")
+            self.journal["editors"] = [e for e in editor_text.split(",") if e]
+            ref = [r for r in jrnl if r[12:16].strip() == "REF"]
+            if ref:
+                self.journal["reference"] = ref[0][19:].strip()
+                if "TO BE PUBLISHED" not in self.journal["reference"]:
+                    self.journal["reference"] = {}
+                    self.journal["reference"]["volume"] = ref[0][51:55].strip() if ref[0][51:55].strip() else None
+                    self.journal["reference"]["page"] = ref[0][56:61].strip() if ref[0][56:61].strip() else None
+                    self.journal["reference"]["year"] = int(ref[0][62:66].strip()) if ref[0][62:66].strip() else None
+                    self.journal["reference"]["publication"] = " ".join([r[19:46].strip() for r in ref]).replace("  ", " ")
+            else:
+                self.journal["reference"] = None
+            publ = [r for r in jrnl if r[12:16] == "PUBL"]
+            if publ:
+                self.journal["publisher"] = " ".join([r[19:].strip() for r in publ]
+                 ).replace("  ", " ")
+            else:
+                self.journal["publisher"] = None
+            refn = [r for r in jrnl if r[12:16] == "REFN"]
+            if refn:
+                self.journal["reference"] = {}
+                self.journal["reference"]["type"] = refn[0][12:16]
+                self.journal["reference"]["serial"] = refn[0][40:65].strip()
+            else:
+                self.journal["reference"] = None
+            pmid = [r for r in jrnl if r[12:16] == "PMID"]
+            self.journal["pmid"] = pmid[0][19:].strip() if pmid else None
+            doi = [r for r in jrnl if r[12:16].strip() == "DOI"]
+            self.journal["doi"] = doi[0][19:].strip() if doi else None
+        else:
+            self.journal = None
+
+        #Process REMARKs
+        remarks = self.get_records_by_name("REMARK")
+        remark_nums = list(set([int(r[7:10].strip()) for r in remarks]))
+        remark_nums.sort()
+        self.remarks = []
+        for num in remark_nums:
+            self.remarks.append({
+             "num": num,
+             "content": "\n".join([r[11:].rstrip() for r in remarks
+              if int(r[7:10].strip()) == num and r[11:].strip()])
+            })
 
 
 
