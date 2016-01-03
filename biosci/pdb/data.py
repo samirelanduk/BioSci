@@ -9,6 +9,7 @@ class PdbDataStructure:
 
         #Create the sections
         self.title = TitleSection(self.file)
+        self.primary_structure = PrimaryStructureSection(self.file)
         self.secondary_structure = SecondaryStructureSection(self.file)
         self.connectivity_annotation = ConnectivityAnnotationSection(self.file)
         self.miscellaneous = MiscellaneousSection(self.file)
@@ -248,6 +249,88 @@ class TitleSection(PdbSection):
 
 
 
+class PrimaryStructureSection(PdbSection):
+
+    RECORD_NAMES = ("DBREF", "DBREF1", "DBREF2", "SEQADV", "SEQRES", "MODRES")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+        #Process DBREF
+        dbrefs = self.get_records_by_name("DBREF")
+        dbrefs_long = zip(self.get_records_by_name("DBREF1"),
+         self.get_records_by_name("DBREF2"))
+        self.db_refs = [{
+         "code": dbref[7:11].strip() if dbref[7:11] else None,
+         "chain": dbref[12] if dbref[12].strip() else None,
+         "seq_begin": int(dbref[14:18].strip()) if dbref[14:18] else None,
+         "insert_begin": int(dbref[18]) if dbref[18].strip() else None,
+         "seq_end": int(dbref[20:24].strip()) if dbref[20:24] else None,
+         "insert_end": int(dbref[24]) if dbref[24].strip() else None,
+         "database": dbref[26:32].strip() if dbref[26:32].strip() else None,
+         "accession": dbref[33:41].strip() if dbref[33:41].strip() else None,
+         "id": dbref[42:54].strip() if dbref[42:54].strip() else None,
+         "db_seq_begin": int(dbref[55:60].strip()) if dbref[55:60] else None,
+         "db_insert_begin": int(dbref[60]) if dbref[60].strip() else None,
+         "db_seq_end": int(dbref[62:67].strip()) if dbref[62:67] else None,
+         "db_insert_end": int(dbref[67]) if dbref[67].strip() else None
+        } for dbref in dbrefs]
+        for dbref, dbref2 in dbrefs_long:
+            self.dbrefs += {
+             "code": dbref[7:11].strip() if dbref[7:11] else None,
+             "chain": dbref[12] if dbref[12].strip() else None,
+             "seq_begin": int(dbref[14:18].strip()) if dbref[14:18] else None,
+             "insert_begin": int(dbref[18]) if dbref[18].strip() else None,
+             "seq_end": int(dbref[20:24].strip()) if dbref[20:24] else None,
+             "insert_end": int(dbref[24]) if dbref[24].strip() else None,
+             "database": dbref[26:32].strip() if dbref[26:32].strip() else None,
+             "accession": dbref2[18:40].strip() if dbref2[18:40].strip() else None,
+             "id": dbref[47:67].strip() if dbref[42:54].strip() else None,
+             "db_seq_begin": int(dbref2[45:55].strip()) if dbref2[45:55] else None,
+             "db_seq_end": int(dbref[57:67].strip()) if dbref2[57:67] else None
+            }
+
+        #Process SEQADV
+        seqadv = self.get_records_by_name("SEQADV")
+        self.sequence_differences = [{
+         "code": s[7:11] if s[7:11].strip() else None,
+         "res_name": s[12:15].strip() if s[12:15].strip() else None,
+         "chain": s[16] if s[16].strip() else None,
+         "seq_num": int(s[18:22].strip()) if s[18:22] else None,
+         "i_code": s[22] if s[22].strip() else None,
+         "database": s[24:28].strip() if s[24:28].strip() else None,
+         "accession": s[30:37].strip() if s[30:37].strip() else None,
+         "db_res": s[39:42].strip() if s[39:42].strip() else None,
+         "db_seq": int(s[43:48].strip()) if s[43:48].strip() else None,
+         "comment": s[49:70].strip() if s[49:70].strip() else None
+        } for s in seqadv]
+
+        #Process SEQRES
+        seqres = self.get_records_by_name("SEQRES")
+        chains = list(set([r[11] for r in seqres]))
+        chains.sort()
+        self.sequences = []
+        for chain in chains:
+            residues = " ".join([r[19:].strip() for r in seqres if r[11] == chain]
+             ).replace("  ", " ").split()
+            self.sequences.append({
+             "chain": chain,
+             "residues": residues
+            })
+
+        #Process MODRES
+        modres = self.get_records_by_name("MODRES")
+        self.residue_modifications = [{
+         "code": r[7:11] if r[7:11].strip() else None,
+         "res_name": r[12:15].strip() if r[12:15].strip() else None,
+         "chain_id": r[16] if r[16].strip() else None,
+         "seq_num": int(r[18:22].strip()) if r[18:22].strip() else None,
+         "i_code": r[22] if r[22].strip() else None,
+         "std_res": r[24:27].strip() if r[24:27].strip() else None,
+         "comment": r[29:70].strip() if r[29:70].strip() else None
+        } for r in modres]
+
+
 class SecondaryStructureSection(PdbSection):
 
     RECORD_NAMES = ("HELIX", "SHEET")
@@ -302,6 +385,7 @@ class SecondaryStructureSection(PdbSection):
              "reg_prev_insert": l[69] if l[69] else None
             } for l in lines]
             self.sheets.append({"sheet_id":sheet, "strands":strands})
+
 
 
 
