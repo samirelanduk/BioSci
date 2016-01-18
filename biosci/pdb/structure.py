@@ -80,6 +80,10 @@ class ResiduicStructure(AtomicStructure):
         return ", ".join([str(r) for r in self.residues])
 
 
+    def __len__(self):
+        return len(self.residues)
+
+
     def get_residues_by_chain(self, chain_id):
         return [r for r in self.residues if r.chain.name == chain_id]
 

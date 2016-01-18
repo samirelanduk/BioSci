@@ -150,7 +150,7 @@ class TitleSection(PdbSection):
         #Process NUMMDL
         nummdl = self.get_records_by_name("NUMMDL")
         if nummdl:
-            self.model_number = int(nummdl[10:14].strip()) if nummdl[10:14].strip() else 1
+            self.model_number = int(nummdl[0][10:14].strip()) if nummdl[0][10:14].strip() else 1
         else:
             self.model_number = 1
 
