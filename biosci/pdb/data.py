@@ -10,6 +10,7 @@ class PdbDataStructure:
         #Create the sections
         self.title = TitleSection(self.file)
         self.primary_structure = PrimaryStructureSection(self.file)
+        self.heterogen = HeterogenSection(self.file)
         self.secondary_structure = SecondaryStructureSection(self.file)
         self.connectivity_annotation = ConnectivityAnnotationSection(self.file)
         self.miscellaneous = MiscellaneousSection(self.file)
@@ -352,8 +353,57 @@ class HeterogenSection(PdbSection):
     def __init__(self, *args, **kwargs):
         PdbSection.__init__(self, *args, **kwargs)
 
+        #Process HETs
+        hets = self.get_records_by_name("HET")
+        self.hets = [{
+         "het_id": h[7:10].strip() if h[7:10] else None,
+         "chain": h[12] if h[12].strip() else None,
+         "seq_num": int(h[13:17].strip()) if h[13:17].strip() else None,
+         "insert": h[17] if h[17].strip() else None,
+         "num_atoms": int(h[20:25].strip()) if h[20:25].strip() else None,
+         "description": h[30:70].strip() if h[30:70].strip() else None
+        } for h in hets]
 
-        
+        #Process HETNAMs
+        hetnams = self.get_records_by_name("HETNAM")
+        names = set([h[11:14] for h in hetnams])
+        self.hetnams = []
+        for name in names:
+            fullname = " ".join([h[15:].strip() for h in hetnams if h[11:14] == name]
+             ).replace("  ", " ")
+            self.hetnams.append({
+             "code": name,
+             "fullname": fullname
+            })
+
+        #Process HETSYNs
+        hetsyns = self.get_records_by_name("HETSYN")
+        names = set([h[11:14] for h in hetsyns])
+        self.hetsyns = []
+        for name in names:
+            synonyms = " ".join([h[15:].strip() for h in hetsyns if h[11:14] == name]
+             ).replace("  ", " ").replace(", ", ",").split(",")
+            self.hetsyns.append({
+             "code": name,
+             "synonyms": synonyms
+            })
+
+        #Process FORMULs
+        formuls = self.get_records_by_name("FORMUL")
+        names = set([h[12:15].strip() for h in formuls])
+        self.formuls = []
+        for name in names:
+            records = [r for r in formuls if r[12:15].strip() == name]
+            self.formuls.append({
+             "component_number": int(records[0][8:10].strip()) if records[0][8:10].strip() else None,
+             "het_id": name,
+             "water": records[0][18] == "*",
+             "formula": " ".join([r[19:].strip() for r in records if r[12:15].strip() == name]
+              ).replace("  ", " ")
+            })
+
+
+
 class SecondaryStructureSection(PdbSection):
 
     RECORD_NAMES = ("HELIX", "SHEET")
