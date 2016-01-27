@@ -345,6 +345,15 @@ class PrimaryStructureSection(PdbSection):
         } for r in modres]
 
 
+class HeterogenSection(PdbSection):
+
+    RECORD_NAMES = ("HET", "HETNAM", "HETSYN", "FORMUL")
+
+    def __init__(self, *args, **kwargs):
+        PdbSection.__init__(self, *args, **kwargs)
+
+
+        
 class SecondaryStructureSection(PdbSection):
 
     RECORD_NAMES = ("HELIX", "SHEET")
