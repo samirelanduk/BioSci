@@ -1,4 +1,5 @@
 from collections import Counter
+import math
 
 PERIODIC_TABLE = {
  "H": 1.0079, "HE": 4.0026, "LI": 6.941, "BE": 9.0122, "B": 10.811, "C": 12.0107,
@@ -146,6 +147,8 @@ class Model(AtomicStructure):
         for het in self.hets:
             atoms += het.atoms
         AtomicStructure.__init__(self, atoms)
+        for atom in self.atoms:
+            atom.model = self
 
         #Get sites
         self.pdb_sites = [PdbSite(s, self) for s in site_dicts]
@@ -168,7 +171,6 @@ class Model(AtomicStructure):
 
         #Connect atoms together (standard residues)
         from .residues import residues
-        print(residues.keys())
         for chain in self.chains:
             for residue in chain.residues:
                 if residue.name in residues.keys():
@@ -304,6 +306,22 @@ class Atom:
 
     def __repr__(self):
         return "<%s>" % self.name
+
+
+    def distance_to(self, other_atom):
+        x_sum = math.pow((other_atom.x - self.x), 2)
+        y_sum = math.pow((other_atom.y - self.y), 2)
+        z_sum = math.pow((other_atom.z - self.z), 2)
+        distance = math.sqrt(x_sum + y_sum + z_sum)
+        return distance
+
+
+    def nearby_atoms(self, cutoff, include_covalent=True):
+        atoms = []
+        for atom in self.model.atoms:
+            if (include_covalent or atom not in self.bonded_atoms) and atom is not self and atom.distance_to(self) <= cutoff:
+                atoms.append(atom)
+        return atoms
 
 
 
