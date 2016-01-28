@@ -1,4 +1,4 @@
-{'ALA': {'C': ['CA', 'O', 'OXT'],
+residues = {'ALA': {'C': ['CA', 'O', 'OXT'],
          'CA': ['N', 'C', 'CB', 'HA'],
          'CB': ['CA', 'HB1', 'HB2', 'HB3'],
          'H': ['N'],

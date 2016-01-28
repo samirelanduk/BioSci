@@ -158,13 +158,32 @@ class Model(AtomicStructure):
         #Get sheets
         self.sheets = [Sheet(s, self) for s in secondary_section.sheets]
 
-        #Connect atoms together
+        #Connect atoms together (from CONECT records)
         for atom_dict in connect_section.atoms:
             atom_obj = self.get_atom_by_number(atom_dict["atom_id"])
             for bonded_atom_id in atom_dict["bonded_atoms"]:
                 bonded_atom_obj = self.get_atom_by_number(bonded_atom_id)
                 if bonded_atom_obj not in atom_obj.bonded_atoms:
                     atom_obj.bonded_atoms.append(bonded_atom_obj)
+
+        #Connect atoms together (standard residues)
+        from .residues import residues
+        print(residues.keys())
+        for chain in self.chains:
+            for residue in chain.residues:
+                if residue.name in residues.keys():
+                    residue_dict = residues[residue.name]
+                    for atom_name in residue_dict.keys():
+                        matching_atoms = residue.get_atoms_by_name(atom_name)
+                        if len(matching_atoms) == 1:
+                            atom = matching_atoms[0]
+                            for bonded_atom_name in residue_dict[atom_name]:
+                                matching_atoms = residue.get_atoms_by_name(bonded_atom_name)
+                                if len(matching_atoms) == 1 and matching_atoms[0] not in atom.bonded_atoms:
+                                    atom.bonded_atoms.append(matching_atoms[0])
+
+
+
 
 
     def __repr__(self):

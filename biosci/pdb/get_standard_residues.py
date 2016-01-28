@@ -31,6 +31,8 @@ for residue in residues:
 
 
 #Save
-f = open("residues.txt", "w")
-f.write(pformat(residues))
+residues = pformat(residues)
+residues = "residues = " + residues
+f = open("residues.py", "w")
+f.write(residues)
 f.close()
