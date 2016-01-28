@@ -1,9 +1,8 @@
 MANIFEST
 dist
-biosci/*.pyc
+*.pyc
 biosci/__pycache__
 *test.py
 *.mol2
-biosci/mol2/*.pyc
 biosci/mol2/__pycache__
 .DS_Store
