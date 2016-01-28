@@ -28,7 +28,9 @@ class PdbStructure:
     def __init__(self, pdb_data):
         self.data = pdb_data
 
-        self.models = [Model(d, self.data.miscellaneous.sites, self.data.secondary_structure) for d in self.data.coordinates.models]
+        self.models = [Model(d, self.data.miscellaneous.sites,
+         self.data.secondary_structure, self.data.connectivity)
+          for d in self.data.coordinates.models]
         self.model = self.models[0]
 
 
@@ -124,7 +126,7 @@ class ResiduicStructure(AtomicStructure):
 class Model(AtomicStructure):
     """A PDB model."""
 
-    def __init__(self, model_dict, site_dicts, secondary_section):
+    def __init__(self, model_dict, site_dicts, secondary_section, connect_section):
         #Get chains
         chain_ids = sorted(list(set([a["chain_id"] for a in model_dict["atoms"] if not a["het"]])))
         self.chains = [Chain(
@@ -155,6 +157,14 @@ class Model(AtomicStructure):
 
         #Get sheets
         self.sheets = [Sheet(s, self) for s in secondary_section.sheets]
+
+        #Connect atoms together
+        for atom_dict in connect_section.atoms:
+            atom_obj = self.get_atom_by_number(atom_dict["atom_id"])
+            for bonded_atom_id in atom_dict["bonded_atoms"]:
+                bonded_atom_obj = self.get_atom_by_number(bonded_atom_id)
+                if bonded_atom_obj not in atom_obj.bonded_atoms:
+                    atom_obj.bonded_atoms.append(bonded_atom_obj)
 
 
     def __repr__(self):
@@ -270,6 +280,7 @@ class Atom:
         self.u23 = atom_dict.get("u23", None)
 
         self.mass = PERIODIC_TABLE[self.element.upper()]
+        self.bonded_atoms = []
 
 
     def __repr__(self):

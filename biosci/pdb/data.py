@@ -346,6 +346,7 @@ class PrimaryStructureSection(PdbSection):
         } for r in modres]
 
 
+
 class HeterogenSection(PdbSection):
 
     RECORD_NAMES = ("HET", "HETNAM", "HETSYN", "FORMUL")
@@ -461,7 +462,6 @@ class SecondaryStructureSection(PdbSection):
 
 
 
-
 class ConnectivityAnnotationSection(PdbSection):
 
     RECORD_NAMES = ("SSBOND", "LINK", "CISPEP")
@@ -518,6 +518,7 @@ class ConnectivityAnnotationSection(PdbSection):
          "modnum": int(s[43:46].strip()) if s[43:46].strip() else None,
          "angle_measure": float(s[53:59].strip()) if s[53:59].strip() else None
         } for s in cispeps]
+
 
 
 class MiscellaneousSection(PdbSection):
@@ -751,6 +752,7 @@ class CoordinateSection(PdbSection):
             } for t in ters]
 
             self.models.append(model)
+
 
 
 class ConnectivitySection(PdbSection):
