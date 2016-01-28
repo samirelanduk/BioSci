@@ -30,9 +30,28 @@ class PdbStructure:
         self.data = pdb_data
 
         self.models = [Model(d, self.data.miscellaneous.sites,
-         self.data.secondary_structure, self.data.connectivity)
-          for d in self.data.coordinates.models]
+         self.data.secondary_structure, self.data.connectivity,
+          self.data.connectivity_annotation) for d in self.data.coordinates.models]
         self.model = self.models[0]
+
+
+class ChemicalBond:
+    """A covalent bond, or similarly strong bond"""
+
+    def __init__(self, *atoms, peptide=False, cis=False, disulphide=False, specified_distance=None):
+        assert len(atoms) == 2
+        self.atoms = atoms
+        self.peptide = peptide
+        self.cis = cis
+        self.disulphide = disulphide
+        self.specified_distance = specified_distance
+
+        atoms[0].bonds.append(self)
+        atoms[1].bonds.append(self)
+
+
+    def __repr__(self):
+        return "%s—%s" % (self.atoms[0].element, self.atoms[1].element)
 
 
 
@@ -46,6 +65,15 @@ class AtomicStructure:
 
     def __repr__(self):
         return ", ".join([str(a) for a in self.atoms])
+
+
+    def get_bonds(self):
+        bonds = []
+        for atom in self.atoms:
+            for bond in atom.bonds:
+                if bond not in bonds:
+                    bonds.append(bond)
+        return bonds
 
 
     def get_atom_by_number(self, number):
@@ -127,7 +155,7 @@ class ResiduicStructure(AtomicStructure):
 class Model(AtomicStructure):
     """A PDB model."""
 
-    def __init__(self, model_dict, site_dicts, secondary_section, connect_section):
+    def __init__(self, model_dict, site_dicts, secondary_section, connect_section, connect_annotation_section):
         #Get chains
         chain_ids = sorted(list(set([a["chain_id"] for a in model_dict["atoms"] if not a["het"]])))
         self.chains = [Chain(
@@ -166,8 +194,7 @@ class Model(AtomicStructure):
             atom_obj = self.get_atom_by_number(atom_dict["atom_id"])
             for bonded_atom_id in atom_dict["bonded_atoms"]:
                 bonded_atom_obj = self.get_atom_by_number(bonded_atom_id)
-                if bonded_atom_obj not in atom_obj.bonded_atoms:
-                    atom_obj.bonded_atoms.append(bonded_atom_obj)
+                atom_obj.bond(bonded_atom_obj)
 
         #Connect atoms together (standard residues)
         from .residues import residues
@@ -181,8 +208,55 @@ class Model(AtomicStructure):
                             atom = matching_atoms[0]
                             for bonded_atom_name in residue_dict[atom_name]:
                                 matching_atoms = residue.get_atoms_by_name(bonded_atom_name)
-                                if len(matching_atoms) == 1 and matching_atoms[0] not in atom.bonded_atoms:
-                                    atom.bonded_atoms.append(matching_atoms[0])
+                                if len(matching_atoms) == 1:
+                                    atom.bond(matching_atoms[0])
+
+        #Connect atoms together (peptide bonds)
+        for chain in self.chains:
+            for index, residue in enumerate(chain.residues[:-1]):
+                c, n = None, None
+                cs = residue.get_atoms_by_name("C")
+                if len(cs) == 1:
+                    c = cs[0]
+                ns = chain.residues[index+1].get_atoms_by_name("N")
+                if len(ns) == 1:
+                    n = ns[0]
+                if c and n:
+                    c.bond(n, peptide=True)
+
+        #Connect atoms together (SS, LINK and CISPEP) (MISSES SOME INFO)
+        for ssbond in connect_annotation_section.ssbonds:
+            residue1 = self.get_chain_by_name(ssbond["residue_1_chain"]
+             ).get_residue_by_number(ssbond["residue_1_number"])
+            residue2 = self.get_chain_by_name(ssbond["residue_2_chain"]
+             ).get_residue_by_number(ssbond["residue_2_number"])
+            atom1 = residue1.get_atoms_by_element("S")[0]
+            atom2 = residue2.get_atoms_by_element("S")[0]
+            atom1.bond(atom2, disulphide=True, specified_distance=ssbond["disulfide_distance"]) #No symetry information yet
+        for link in connect_annotation_section.links:
+            atom1 = self.get_atom_by_number(link["residue_1_atom"])
+            atom2 = self.get_atom_by_number(link["residue_2_atom"])
+            atom1.bond(atom2)
+        for cispep in connect_annotation_section.cispeps:
+            residue1 = self.get_chain_by_name(cispep["residue_1_chain"]
+             ).get_residue_by_number(cispep["residue_1_number"])
+            residue2 = self.get_chain_by_name(cispep["residue_2_chain"]
+             ).get_residue_by_number(cispep["residue_2_number"])
+            residue1_peptide_bonds = []
+            for atom in residue1.atoms:
+                for bond in atom.bonds:
+                    if bond not in residue1_peptide_bonds and bond.peptide:
+                        residue1_peptide_bonds.append(bond)
+            residue2_peptide_bonds = []
+            for atom in residue2.atoms:
+                for bond in atom.bonds:
+                    if bond not in residue2_peptide_bonds and bond.peptide:
+                        residue2_peptide_bonds.append(bond)
+            in_both = [bond for bond in residue1_peptide_bonds if bond in residue2_peptide_bonds]
+            if len(in_both) == 1:
+                in_both[0].cis = True
+                in_both[0].cis_angle = cispep["angle_measure"]
+
 
 
 
@@ -278,6 +352,15 @@ class Residue(AtomicStructure):
         return "<%s (%s%i)>" % (self.name, self.chain.name, self.number)
 
 
+    def connected_residues(self):
+        residues = []
+        for atom in self.atoms:
+            for bonded_atom in atom.bonded_atoms:
+                if bonded_atom.molecule is not self and bonded_atom.molecule not in residues:
+                    residues.append(bonded_atom.molecule)
+        return residues
+
+
 
 class Atom:
     """An atom."""
@@ -301,11 +384,29 @@ class Atom:
         self.u23 = atom_dict.get("u23", None)
 
         self.mass = PERIODIC_TABLE[self.element.upper()]
-        self.bonded_atoms = []
+        self.bonds = []
 
 
     def __repr__(self):
         return "<%s>" % self.name
+
+
+    def __getattr__(self, key):
+        if key == "bonded_atoms":
+            atoms = []
+            for bond in self.bonds:
+                for atom in bond.atoms:
+                    if atom is not self and atom not in atoms:
+                        atoms.append(atom)
+            return atoms
+        else:
+            raise AttributeError("Atom object has no attribute %s" % key)
+
+
+    def bond(self, other_atom, **kwargs):
+        if other_atom not in self.bonded_atoms:
+            ChemicalBond(self, other_atom, **kwargs)
+
 
 
     def distance_to(self, other_atom):
