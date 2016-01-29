@@ -1,4 +1,5 @@
 from collections import Counter
+from .crystal import *
 import math
 
 PERIODIC_TABLE = {
@@ -33,6 +34,9 @@ class PdbStructure:
          self.data.secondary_structure, self.data.connectivity,
           self.data.connectivity_annotation) for d in self.data.coordinates.models]
         self.model = self.models[0]
+
+        self.unit_cell = UnitCell(self.data.crystal)
+
 
 
 class ChemicalBond:
