@@ -660,6 +660,12 @@ class CrystalSection(PdbSection):
             self.m32 = float(mtrix3[20:30].strip()) if mtrix3[20:30].strip() else None
             self.m33 = float(mtrix3[30:40].strip()) if mtrix3[30:40].strip() else None
             self.v3 = float(mtrix3[45:55].strip()) if mtrix3[45:55].strip() else None
+        entries = [entry for entry in (mtrix1, mtrix2, mtrix3) if entry]
+        if entries:
+            self.serial = int(entries[0][7:10].strip()) if entries[0][7:10].strip() else None
+            self.i_given = int(entries[0][59]) if entries[0][59].strip() else None
+        else:
+            self.serial, self.i_given = None, None
 
 
 

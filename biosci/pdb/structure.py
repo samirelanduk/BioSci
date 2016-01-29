@@ -36,6 +36,9 @@ class PdbStructure:
         self.model = self.models[0]
 
         self.unit_cell = UnitCell(self.data.crystal)
+        self.submission_transformation = SubmittedCoordinatesTransformation(self.data.crystal)
+        self.crystal_transformation = CrystallographicCoordinatesTransformation(self.data.crystal)
+        self.matrix_transformation = MatrixTransformation(self.data.crystal)
 
 
 
