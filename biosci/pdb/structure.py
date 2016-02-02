@@ -102,9 +102,15 @@ class AtomicStructure:
         return Counter(atoms)
 
 
-    def count_atomic_contacts(self, other_atomic_structure):
+    def count_atomic_contacts(self, other_atomic_structure, cutoff):
         """How many atomic interactions are there between this object and
         another atomic structure?"""
+
+        contacts = 0
+        for atom in self.atoms:
+            nearby = atom.nearby_atoms(cutoff=cutoff, include_covalent=False)
+            contacts += len([a for a in nearby if a in other_atomic_structure.atoms and a not in self.atoms])
+        return contacts
 
 
     def count_internal_atomic_contacts(self):
