@@ -102,6 +102,15 @@ class AtomicStructure:
         return Counter(atoms)
 
 
+    def count_atomic_contacts(self, other_atomic_structure):
+        """How many atomic interactions are there between this object and
+        another atomic structure?"""
+
+
+    def count_internal_atomic_contacts(self):
+        """How many internal atomic interactions are there in this object?"""
+
+
 
 class ResiduicStructure(AtomicStructure):
     """Some structure that contains residues."""
