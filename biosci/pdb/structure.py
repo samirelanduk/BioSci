@@ -446,10 +446,17 @@ class Atom:
         return distance
 
 
-    def nearby_atoms(self, cutoff, include_covalent=True):
+    def nearby_atoms(self, cutoff, covalent_count=1):
+        atoms_to_exlcude = [self]
+        for _ in range(covalent_count):
+            for atom in atoms_to_exlcude[:]:
+                for bonded_atom in atom.bonded_atoms:
+                    if bonded_atom not in atoms_to_exlcude:
+                        atoms_to_exlcude.append(bonded_atom)
+
         atoms = []
         for atom in self.model.atoms:
-            if (include_covalent or atom not in self.bonded_atoms) and atom is not self and atom.distance_to(self) <= cutoff:
+            if atom not in atoms_to_exlcude and atom.distance_to(self) <= cutoff:
                 atoms.append(atom)
         return atoms
 
