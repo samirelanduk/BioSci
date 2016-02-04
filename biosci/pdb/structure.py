@@ -108,7 +108,7 @@ class AtomicStructure:
 
         contacts = 0
         for atom in self.atoms:
-            nearby = atom.nearby_atoms(cutoff=cutoff, include_covalent=False)
+            nearby = atom.nearby_atoms(cutoff=cutoff, covalent_count=2)
             contacts += len([a for a in nearby if a in other_atomic_structure.atoms and a not in self.atoms])
         return contacts
 
@@ -118,7 +118,7 @@ class AtomicStructure:
 
         contacts = 0
         for atom in self.atoms:
-            nearby = atom.nearby_atoms(cutoff=cutoff, include_covalent=False)
+            nearby = atom.nearby_atoms(cutoff=cutoff, covalent_count=2)
             contacts += len([a for a in nearby if a in self.atoms])
         return contacts
 
