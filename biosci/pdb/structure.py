@@ -265,7 +265,7 @@ class Model(AtomicStructure):
         for link in connect_annotation_section.links:
             atom1 = self.get_atom_by_number(link["residue_1_atom"])
             atom2 = self.get_atom_by_number(link["residue_2_atom"])
-            atom1.bond(atom2)
+            if atom1 and atom2: atom1.bond(atom2)
         for cispep in connect_annotation_section.cispeps:
             residue1 = self.get_chain_by_name(cispep["residue_1_chain"]
              ).get_residue_by_number(cispep["residue_1_number"])
@@ -285,8 +285,6 @@ class Model(AtomicStructure):
             if len(in_both) == 1:
                 in_both[0].cis = True
                 in_both[0].cis_angle = cispep["angle_measure"]
-
-
 
 
 
