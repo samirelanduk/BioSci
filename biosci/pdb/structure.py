@@ -197,10 +197,10 @@ class Model(AtomicStructure):
             atoms += chain.atoms
 
         #Get hets
-        het_numbers = sorted(list(set([a["res_seq"] for a in model_dict["atoms"] if a["het"]])))
+        het_ids = sorted(list(set([(a["chain_id"], a["res_seq"]) for a in model_dict["atoms"] if a["het"]])))
         self.hets = [Het(
-         [a for a in model_dict["atoms"] if a["res_seq"] == het_number]
-        ) for het_number in het_numbers]
+         [a for a in model_dict["atoms"] if (a["chain_id"], a["res_seq"]) == het_id]
+        ) for het_id in het_ids]
         for het in self.hets:
             atoms += het.atoms
         AtomicStructure.__init__(self, atoms)
