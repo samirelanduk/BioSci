@@ -19,3 +19,11 @@ def get_from_code(code):
     pdb_file = PdbFile(contents)
     pdb_data = PdbDataStructure(pdb_file)
     return PdbStructure(pdb_data)
+
+
+def get_from_file(path):
+    with open(path) as f:
+        contents = f.read()
+        pdb_file = PdbFile(contents)
+        pdb_data = PdbDataStructure(pdb_file)
+        return PdbStructure(pdb_data)
