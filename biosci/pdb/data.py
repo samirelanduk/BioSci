@@ -371,9 +371,9 @@ class HeterogenSection(PdbSection):
         self.hetnams = []
         for name in names:
             fullname = " ".join([h[15:].strip() for h in hetnams if h[11:14] == name]
-             ).replace("  ", " ")
+             ).replace("  ", " ").replace("- ", "-")
             self.hetnams.append({
-             "code": name,
+             "code": name.strip(),
              "fullname": fullname
             })
 

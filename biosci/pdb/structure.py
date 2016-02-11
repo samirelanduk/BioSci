@@ -32,7 +32,7 @@ class PdbStructure:
 
         self.models = [Model(d, self.data.miscellaneous.sites,
          self.data.secondary_structure, self.data.connectivity,
-          self.data.connectivity_annotation) for d in self.data.coordinates.models]
+          self.data.connectivity_annotation, self.data.heterogen) for d in self.data.coordinates.models]
         self.model = self.models[0]
 
         self.unit_cell = UnitCell(self.data.crystal)
@@ -184,7 +184,7 @@ class ResiduicStructure(AtomicStructure):
 class Model(AtomicStructure):
     """A PDB model."""
 
-    def __init__(self, model_dict, site_dicts, secondary_section, connect_section, connect_annotation_section):
+    def __init__(self, model_dict, site_dicts, secondary_section, connect_section, connect_annotation_section, heterogen_section):
         #Get chains
         chain_ids = sorted(list(set([a["chain_id"] for a in model_dict["atoms"] if not a["het"]])))
         self.chains = [Chain(
@@ -203,6 +203,11 @@ class Model(AtomicStructure):
         ) for het_id in het_ids]
         for het in self.hets:
             atoms += het.atoms
+            het_dict_matches = [h for h in heterogen_section.hetnams if h["code"] == het.name]
+            if het_dict_matches:
+                het.full_name = het_dict_matches[0]["fullname"]
+            else:
+                het.full_name = None
         AtomicStructure.__init__(self, atoms)
         for atom in self.atoms:
             atom.model = self
