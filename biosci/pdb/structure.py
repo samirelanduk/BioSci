@@ -243,7 +243,7 @@ class Model(AtomicStructure):
             atom.model = self
 
         #Get sites
-        self.pdb_sites = [PdbSite(s, self) for s in site_dicts]
+        self.pdb_sites = [PdbSite(s, self) for s in site_dicts if len(s["residues"])]
 
         #Get helices
         self.helices = []
@@ -511,6 +511,21 @@ class Het(AtomicStructure):
     def __repr__(self):
         return "<%s (%i atom%s)>" % (self.name, len(self.atoms), "" if len(self.atoms) == 1 else "s")
 
+
+    def get_nearby_residues(self, cutoff=3):
+        """Returns a list of residues close to this ligand."""
+
+        nearby_atoms = []
+        for atom in self.atoms:
+            for near_atom in atom.nearby_atoms(cutoff):
+                if near_atom not in nearby_atoms:
+                    nearby_atoms.append(near_atom)
+        nearby_atoms = [atom for atom in nearby_atoms if atom not in self.atoms
+         and isinstance(atom.molecule, Residue)]
+        residues = list(set([atom.molecule for atom in nearby_atoms]))
+        residues = sorted(residues, key=lambda k: k.chain.name)
+        residues = sorted(residues, key=lambda k: k.number)
+        return residues
 
 
 
