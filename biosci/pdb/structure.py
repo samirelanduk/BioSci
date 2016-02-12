@@ -123,6 +123,36 @@ class AtomicStructure:
         return contacts
 
 
+    def average_x(self):
+        """Return the average x coordinate."""
+
+        return sum([atom.x for atom in self.atoms]) / len(self.atoms)
+
+
+    def average_y(self):
+        """Return the average y coordinate."""
+
+        return sum([atom.y for atom in self.atoms]) / len(self.atoms)
+
+
+    def average_z(self):
+        """Return the average z coordinate."""
+
+        return sum([atom.z for atom in self.atoms]) / len(self.atoms)
+
+
+    def distance_to_other_structure(self, other_atomic_structure):
+        """What is the distance between this atomic structure and another, using
+        average cartesian coordinates."""
+
+        x_sum = math.pow((other_atomic_structure.average_x() - self.average_x()), 2)
+        y_sum = math.pow((other_atomic_structure.average_y() - self.average_y()), 2)
+        z_sum = math.pow((other_atomic_structure.average_z() - self.average_z()), 2)
+        distance = math.sqrt(x_sum + y_sum + z_sum)
+        return distance
+
+
+
 
 
 class ResiduicStructure(AtomicStructure):
