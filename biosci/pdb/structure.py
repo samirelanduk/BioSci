@@ -33,7 +33,7 @@ class PdbStructure:
 
         self.models = [Model(d, self.data.miscellaneous.sites,
          self.data.secondary_structure, self.data.connectivity,
-          self.data.connectivity_annotation, self.data.heterogen) for d in self.data.coordinates.models]
+          self.data.connectivity_annotation, self.data.heterogen, self.data.title) for d in self.data.coordinates.models]
         self.model = self.models[0]
 
         self.unit_cell = UnitCell(self.data.crystal)
@@ -68,8 +68,8 @@ class AtomicStructure:
 
     def __init__(self, atoms):
         self.atoms = atoms
-        if not self.atoms:
-            raise PdbStructureError("Structure has no atoms")
+        #if not self.atoms:
+        #    raise PdbStructureError("Structure has no atoms")
         self.mass = sum([a.mass for a in self.atoms])
 
 
@@ -217,7 +217,7 @@ class ResiduicStructure(AtomicStructure):
 class Model(AtomicStructure):
     """A PDB model."""
 
-    def __init__(self, model_dict, site_dicts, secondary_section, connect_section, connect_annotation_section, heterogen_section):
+    def __init__(self, model_dict, site_dicts, secondary_section, connect_section, connect_annotation_section, heterogen_section, title_section):
         #Get chains
         chain_ids = sorted(list(set([a["chain_id"] for a in model_dict["atoms"] if not a["het"]])))
         self.chains = [Chain(
@@ -241,6 +241,7 @@ class Model(AtomicStructure):
                 het.full_name = het_dict_matches[0]["fullname"]
             else:
                 het.full_name = None
+            het.chain = self.get_chain_by_name(het.chain_id)
         AtomicStructure.__init__(self, atoms)
         for atom in self.atoms:
             atom.model = self
@@ -248,6 +249,26 @@ class Model(AtomicStructure):
         #Get sites
         self.pdb_sites = [PdbSite(s, self) for s in site_dicts]
         self.pdb_sites = [site for site in self.pdb_sites if len(site.residues)]
+
+        #Try to match sites and ligands
+        remark800s = [r for r in title_section.remarks if r["num"] == 800]
+        site_ids, het_ids = [], []
+        if remark800s:
+            remark = remark800s[0]["content"]
+            if len(remark.split("\n")) > 3:
+                site_ids = [i.split(":")[1].strip() if ":" in i else i for i in remark.split("\n")[1::3]]
+                het_ids = [i.split(":")[1].strip() if ":" in i else i for i in remark.split("\n")[3::3]]
+        for het in self.hets:
+            found = False
+            for index, het_id in enumerate(het_ids):
+                if ("%s %s %i" % (het.name, het.chain.name, het.number)).lower() in het_id.lower():
+                    site_id = site_ids[index]
+                    for site in self.pdb_sites:
+                        if site.name == site_id:
+                            het.annotated_binding_site = site
+                            found = True
+            if not found:
+                het.annotated_binding_site = None
 
         #Get helices
         self.helices = []
@@ -505,6 +526,7 @@ class Het(AtomicStructure):
     def __init__(self, atoms):
         self.number = atoms[0]["res_seq"]
         self.name = atoms[0]["res_name"]
+        self.chain_id = atoms[0]["chain_id"]
 
         #Get atoms
         AtomicStructure.__init__(self, [Atom(a) for a in atoms])
