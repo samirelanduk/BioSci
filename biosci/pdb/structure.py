@@ -1,6 +1,7 @@
 from collections import Counter
 from .crystal import *
 import math
+from .exceptions import *
 
 PERIODIC_TABLE = {
  "H": 1.0079, "HE": 4.0026, "LI": 6.941, "BE": 9.0122, "B": 10.811, "C": 12.0107,
@@ -67,6 +68,8 @@ class AtomicStructure:
 
     def __init__(self, atoms):
         self.atoms = atoms
+        if not self.atoms:
+            raise PdbStructureError("Structure has no atoms")
         self.mass = sum([a.mass for a in self.atoms])
 
 
@@ -243,7 +246,8 @@ class Model(AtomicStructure):
             atom.model = self
 
         #Get sites
-        self.pdb_sites = [PdbSite(s, self) for s in site_dicts if len(s["residues"])]
+        self.pdb_sites = [PdbSite(s, self) for s in site_dicts]
+        self.pdb_sites = [site for site in self.pdb_sites if len(site.residues)]
 
         #Get helices
         self.helices = []
