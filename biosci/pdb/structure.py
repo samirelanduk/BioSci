@@ -399,15 +399,15 @@ class Chain(ResiduicStructure):
 
     def produce_distance_matrix_svg(self):
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
+        carbon_number = len(alpha_carbons)
 
-        matrix = [[None][:] * len(alpha_carbons)][:] * len(alpha_carbons)
+        #Calculate distances
         matrix = []
         for _ in alpha_carbons:
             row = []
             for __ in alpha_carbons:
                 row.append(None)
             matrix.append(row)
-
         largest_distance = 0
         for index1, carbon1 in enumerate(alpha_carbons):
             for index2, carbon2 in enumerate(alpha_carbons):
@@ -418,8 +418,29 @@ class Chain(ResiduicStructure):
                         largest_distance = distance
                 else:
                     matrix[index1][index2] = 0
-        print(largest_distance)
-        return matrix
+
+        #Produce SVG
+        svg = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<svg width="700" height="700">'''
+        for index1, _ in enumerate(alpha_carbons):
+            for index2, __ in enumerate(alpha_carbons):
+                if index2 > index1:
+                    svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+                     style="fill: hsl(%f, 100%%, 50%%);" />''' % (
+                      29 + (index2 * (640 / carbon_number)),
+                      29 + (index1 * (640 / carbon_number)),
+                      (640 / carbon_number) + 1,
+                      (640 / carbon_number) + 1,
+                      120 - ((matrix[index1][index2] / 20 if matrix[index1][index2] <= 20 else 1) * 120)
+                     )
+        svg += '''<rect x="0" y="0" width="700" height="700"
+         style="stroke-width: 5; stroke: black; fill: none;" />'''
+        svg += '''<polygon points="30,30 670,30, 670,670"
+         style="stroke: black; stroke-width: 2; fill: none;"/>'''
+
+        svg += '</svg>'
+        return svg
 
 
 
