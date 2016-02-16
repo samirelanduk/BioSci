@@ -397,6 +397,11 @@ class Chain(ResiduicStructure):
         return "<Chain %s (%i residues)>" % (self.name, len(self.residues))
 
 
+    def produce_distance_matrix_svg(self):
+        alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
+        return svg
+
+
 
 class Residue(AtomicStructure):
     "An amino acid residue."
@@ -446,6 +451,14 @@ class Residue(AtomicStructure):
                 if bonded_atom.molecule is not self and bonded_atom.molecule not in residues:
                     residues.append(bonded_atom.molecule)
         return residues
+
+
+    def get_alpha_carbon(self):
+        ca = self.get_atoms_by_name("CA")
+        if ca:
+            return ca[0]
+        else:
+            return self.get_atoms_by_element("C")[0]
 
 
 
