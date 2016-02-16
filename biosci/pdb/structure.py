@@ -399,7 +399,27 @@ class Chain(ResiduicStructure):
 
     def produce_distance_matrix_svg(self):
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
-        return svg
+
+        matrix = [[None][:] * len(alpha_carbons)][:] * len(alpha_carbons)
+        matrix = []
+        for _ in alpha_carbons:
+            row = []
+            for __ in alpha_carbons:
+                row.append(None)
+            matrix.append(row)
+
+        largest_distance = 0
+        for index1, carbon1 in enumerate(alpha_carbons):
+            for index2, carbon2 in enumerate(alpha_carbons):
+                if carbon1 is not carbon2:
+                    distance = carbon1.distance_to(carbon2)
+                    matrix[index1][index2] = matrix[index2][index1] = distance
+                    if distance > largest_distance:
+                        largest_distance = distance
+                else:
+                    matrix[index1][index2] = 0
+        print(largest_distance)
+        return matrix
 
 
 
