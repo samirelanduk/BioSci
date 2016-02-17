@@ -466,6 +466,30 @@ class Chain(ResiduicStructure):
         svg += '''<rect x="0" y="0" width="700" height="700"
          style="stroke-width: 5; stroke: black; fill: none;" />'''
 
+        svg += '''<polygon points="348,-102.5, 352,-102.5, 352,802.5, 348,802.5"
+         style="fill: hsl(80, 70%, 50%);" transform="translate(-5, 5) rotate(315 350 350)"/>'''
+        for helix in self.helices:
+            start = self.residues.index(helix.residues[0])
+            end = self.residues.index(helix.residues[-1])
+            svg += '''<polygon points="347,%f, 353,%f, 353,%f, 347,%f"
+             style="fill: hsl(325, 70%%, 50%%);" transform="translate(-5, 5) rotate(315 350 350)"/>''' % (
+              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5))
+             )
+        for strand in self.strands:
+            start = self.residues.index(strand.residues[0])
+            end = self.residues.index(strand.residues[-1]) + 1
+            svg += '''<polygon points="347,%f, 353,%f, 353,%f, 347,%f"
+             style="fill: hsl(182, 70%%, 50%%);" transform="translate(-5, 5) rotate(315 350 350)"/>''' % (
+              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5)),
+              ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5))
+             )
+
+
         svg += '</svg>'
         return svg
 
