@@ -6,3 +6,4 @@ biosci/__pycache__
 *.mol2
 biosci/mol2/__pycache__
 .DS_Store
+*.html

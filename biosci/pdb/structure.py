@@ -418,7 +418,6 @@ class Chain(ResiduicStructure):
                         largest_distance = distance
                 else:
                     matrix[index1][index2] = 0
-
         #Produce SVG
         svg = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
@@ -432,12 +431,32 @@ class Chain(ResiduicStructure):
                       29 + (index1 * (640 / carbon_number)),
                       (640 / carbon_number) + 1,
                       (640 / carbon_number) + 1,
-                      120 - ((matrix[index1][index2] / 20 if matrix[index1][index2] <= 20 else 1) * 120)
+                      120 - ((matrix[index1][index2] / 40 if matrix[index1][index2] <= 40 else 1) * 120)
                      )
-        svg += '''<rect x="0" y="0" width="700" height="700"
-         style="stroke-width: 5; stroke: black; fill: none;" />'''
+        res_num = 0
+        while res_num <= carbon_number:
+            xy = 30 + (res_num * (640 / carbon_number))
+            svg += '''<line x1="%f" y1="30" x2="%f" y2="670"
+             style="stroke: black; stroke-width: 1;" />''' % (
+              xy, xy
+             )
+            svg += '''<text x="%f" y="25" text-anchor="middle">%i</text>''' % (
+             xy, res_num
+            )
+            svg += '''<line x1="30" y1="%f" x2="670" y2="%f"
+             style="stroke: black; stroke-width: 1;" />''' % (
+              xy, xy
+            )
+            svg += '''<text x="672" y="%f" text-anchor="start">%i</text>''' % (
+             xy + 5, res_num
+            )
+            res_num += 40
+        svg += '''<polygon points="0,0 0,700, 700,700"
+         style="stroke: white; stroke-width: 0; fill: white;"/>'''
         svg += '''<polygon points="30,30 670,30, 670,670"
          style="stroke: black; stroke-width: 2; fill: none;"/>'''
+        svg += '''<rect x="0" y="0" width="700" height="700"
+         style="stroke-width: 5; stroke: black; fill: none;" />'''
 
         svg += '</svg>'
         return svg
