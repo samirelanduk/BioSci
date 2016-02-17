@@ -426,7 +426,7 @@ class Chain(ResiduicStructure):
             for index2, __ in enumerate(alpha_carbons):
                 if index2 > index1:
                     svg += '''<rect x="%f" y="%f" width="%f" height="%f"
-                     style="fill: hsl(%f, 100%%, 50%%);" />''' % (
+                     style="fill: hsl(%f, 100%%, 50%%);" onhover="cellHovered(this)"/>''' % (
                       29 + (index2 * (640 / carbon_number)),
                       29 + (index1 * (640 / carbon_number)),
                       (640 / carbon_number) + 1,
