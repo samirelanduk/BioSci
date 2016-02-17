@@ -397,7 +397,7 @@ class Chain(ResiduicStructure):
         return "<Chain %s (%i residues)>" % (self.name, len(self.residues))
 
 
-    def produce_distance_matrix_svg(self):
+    def produce_distance_matrix_svg(self, subsequence=None):
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
         carbon_number = len(alpha_carbons)
 
@@ -451,6 +451,14 @@ class Chain(ResiduicStructure):
              xy + 5, res_num
             )
             res_num += 40
+        if subsequence:
+            svg += '''<polygon points="0,%f, %f,%f, %f,670"
+             style="stroke: blue; stroke-width: 1; fill: none;" />''' % (
+              30 + (subsequence[0] * (640 / carbon_number)),
+              30 + (subsequence[1] * (640 / carbon_number)),
+              30 + (subsequence[0] * (640 / carbon_number)),
+              30 + (subsequence[1] * (640 / carbon_number))
+            )
         svg += '''<polygon points="0,0 0,700, 700,700"
          style="stroke: white; stroke-width: 0; fill: white;"/>'''
         svg += '''<polygon points="30,30 670,30, 670,670"
