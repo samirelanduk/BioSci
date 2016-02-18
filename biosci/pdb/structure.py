@@ -398,9 +398,39 @@ class Chain(ResiduicStructure):
         return "<Chain %s (%i residues)>" % (self.name, len(self.residues))
 
 
-    def produce_distance_matrix_svg(self, subsequence=None):
+    def produce_distance_matrix_svg(self, subsequence=None, dimension=700, padding=0.05):
+
+        #Get alpha carbons
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
         carbon_number = len(alpha_carbons)
+
+        #Get parameters
+        paddingpx = padding * dimension
+        plot_width = dimension - (2 * paddingpx)
+        tick = 0
+        if carbon_number >= 10000:
+            tick = 5000
+        elif carbon_number >= 1000:
+            tick = 500
+        elif carbon_number >= 100:
+            tick = 50
+        elif carbon_number >= 10:
+            tick = 5
+        else:
+            tick = 1
+        top_text_y = (5 / 6) * paddingpx
+        right_text_x = (dimension - paddingpx) + 2
+        bar_width = 4
+        bar_left = (dimension / 2) - (bar_width / 2)
+        bar_right = (dimension / 2) + (bar_width / 2)
+        hypoteneuse = math.sqrt((plot_width ** 2) + (plot_width ** 2))
+        bar_top = (dimension / 2) - (hypoteneuse / 2)
+        bar_bottom = (dimension / 2) + (hypoteneuse / 2)
+        diagonal_chunk = hypoteneuse / carbon_number
+
+
+
+
 
         #Calculate distances
         matrix = []
@@ -423,7 +453,9 @@ class Chain(ResiduicStructure):
         #Start SVG
         svg = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
          <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-          <svg width="700" height="700" xmlns="http://www.w3.org/2000/svg">'''
+          <svg width="%f" height="%f" xmlns="http://www.w3.org/2000/svg">''' % (
+           dimension, dimension
+          )
 
         #Add coloured squares
         for index1, _ in enumerate(alpha_carbons):
@@ -432,10 +464,10 @@ class Chain(ResiduicStructure):
                     svg += '''<rect x="%f" y="%f" width="%f" height="%f"
                      style="fill: hsl(%f, 100%%, 50%%);" data="%s"
                       onmouseover="cellHovered(this)" onmouseleave="cellLeft(this)" />''' % (
-                      29 + (index2 * (640 / carbon_number)),
-                      29 + (index1 * (640 / carbon_number)),
-                      (640 / carbon_number) + 1,
-                      (640 / carbon_number) + 1,
+                      (paddingpx - 1) + (index2 * (plot_width / carbon_number)),
+                      (paddingpx - 1) + (index1 * (plot_width / carbon_number)),
+                      (plot_width / carbon_number) + 1,
+                      (plot_width / carbon_number) + 1,
                       120 - ((matrix[index1][index2] / 40 if matrix[index1][index2] <= 40 else 1) * 120),
                       "%s (%i) - %s (%i): %f" % (
                        self.residues[index1].name,
@@ -449,68 +481,90 @@ class Chain(ResiduicStructure):
         #Add grid lines
         res_num = 0
         while res_num <= carbon_number:
-            xy = 30 + (res_num * (640 / carbon_number))
-            svg += '''<line x1="%f" y1="30" x2="%f" y2="670"
+            xy = paddingpx + (res_num * (plot_width / carbon_number))
+            svg += '''<line x1="%f" y1="%f" x2="%f" y2="%f"
              style="stroke: black; stroke-width: 1;" />''' % (
-              xy, xy
+              xy, paddingpx, xy, dimension - paddingpx
              )
-            svg += '''<text x="%f" y="25" text-anchor="middle">%i</text>''' % (
-             xy, res_num
+            svg += '''<text x="%f" y="%f" text-anchor="middle">%i</text>''' % (
+             xy, top_text_y, res_num
             )
-            svg += '''<line x1="30" y1="%f" x2="670" y2="%f"
+            svg += '''<line x1="%f" y1="%f" x2="%f" y2="%f"
              style="stroke: black; stroke-width: 1;" />''' % (
-              xy, xy
+              paddingpx, xy, dimension - paddingpx, xy
             )
-            svg += '''<text x="672" y="%f" text-anchor="start">%i</text>''' % (
-             xy + 5, res_num
+            svg += '''<text x="%f" y="%f" text-anchor="start">%i</text>''' % (
+             right_text_x, xy + 5, res_num
             )
-            res_num += 10
+            res_num += tick
 
         #Add subsequence line
         if subsequence:
-            svg += '''<polygon points="0,%f, %f,%f, %f,670"
+            svg += '''<polygon points="0,%f, %f,%f, %f,%i"
              style="stroke: blue; stroke-width: 1; fill: none;" />''' % (
-              30 + (subsequence[0] * (640 / carbon_number)),
-              30 + (subsequence[1] * (640 / carbon_number)),
-              30 + (subsequence[0] * (640 / carbon_number)),
-              30 + (subsequence[1] * (640 / carbon_number))
+              paddingpx + (subsequence[0] * (plot_width / carbon_number)),
+              paddingpx + (subsequence[1] * (plot_width / carbon_number)),
+              paddingpx + (subsequence[0] * (plot_width / carbon_number)),
+              paddingpx + (subsequence[1] * (plot_width / carbon_number)),
+              dimension
             )
 
-        #Add black borders
-        svg += '''<polygon points="0,0 0,700, 700,700"
-         style="stroke: white; stroke-width: 0; fill: white;"/>'''
-        svg += '''<polygon points="30,30 670,30, 670,670"
-         style="stroke: black; stroke-width: 2; fill: none;"/>'''
-        svg += '''<rect x="0" y="0" width="700" height="700"
-         style="stroke-width: 5; stroke: black; fill: none;" />'''
+        #Hide excess lines
+        svg += '''<polygon points="0,0 0,%i, %i,%i"
+         style="stroke: white; stroke-width: 0; fill: white;"/>''' % (
+          dimension, dimension, dimension
+         )
 
         #Add protein bar
-        svg += '''<polygon points="348,-102.5, 352,-102.5, 352,802.5, 348,802.5"
-         style="fill: hsl(80, 70%, 50%);" transform="translate(-5, 5) rotate(315 350 350)"/>'''
+        svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
+         style="fill: hsl(80, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+          bar_left, bar_top,
+          bar_right, bar_top,
+          bar_right, bar_bottom,
+          bar_left, bar_bottom,
+          bar_width + 2, bar_width + 2,
+          dimension / 2, dimension / 2
+         )
 
         #Add alpha helices
         for helix in self.helices:
             start = self.residues.index(helix.residues[0])
             end = self.residues.index(helix.residues[-1]) + 1
-            svg += '''<polygon points="347,%f, 353,%f, 353,%f, 347,%f"
-             style="fill: hsl(325, 70%%, 50%%);" transform="translate(-5, 5) rotate(315 350 350)"/>''' % (
-              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5))
+            svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
+             style="fill: hsl(325, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+              bar_left - 1, bar_top + (diagonal_chunk * start),
+              bar_right + 1, bar_top + (diagonal_chunk * start),
+              bar_right + 1, bar_top + (diagonal_chunk * end),
+              bar_left - 1, bar_top + (diagonal_chunk * end),
+              bar_width + 2, bar_width + 2,
+              dimension / 2, dimension / 2
              )
 
         #Add beta sheets
         for strand in self.strands:
             start = self.residues.index(strand.residues[0])
             end = self.residues.index(strand.residues[-1]) + 1
-            svg += '''<polygon points="347,%f, 353,%f, 353,%f, 347,%f"
-             style="fill: hsl(182, 70%%, 50%%);" transform="translate(-5, 5) rotate(315 350 350)"/>''' % (
-              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5)),
-              ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5))
+            svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
+             style="fill: hsl(182, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+              bar_left - 1, bar_top + (diagonal_chunk * start),
+              bar_right + 1, bar_top + (diagonal_chunk * start),
+              bar_right + 1, bar_top + (diagonal_chunk * end),
+              bar_left - 1, bar_top + (diagonal_chunk * end),
+              bar_width + 2, bar_width + 2,
+              dimension / 2, dimension / 2
              )
+
+        #Add black borders
+        svg += '''<polygon points="%f,%f %f,%f, %f,%f"
+         style="stroke: black; stroke-width: 2; fill: none;"/>''' % (
+          paddingpx, paddingpx,
+          dimension - paddingpx, paddingpx,
+          dimension - paddingpx, dimension - paddingpx
+         )
+        svg += '''<rect x="0" y="0" width="%i" height="%i"
+         style="stroke-width: 5; stroke: black; fill: none;" />''' % (
+          dimension, dimension
+         )
 
         svg += '</svg>'
         return svg
