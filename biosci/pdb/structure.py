@@ -419,21 +419,34 @@ class Chain(ResiduicStructure):
                         largest_distance = distance
                 else:
                     matrix[index1][index2] = 0
-        #Produce SVG
+
+        #Start SVG
         svg = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg width="700" height="700">'''
+         <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+          <svg width="700" height="700" xmlns="http://www.w3.org/2000/svg">'''
+
+        #Add coloured squares
         for index1, _ in enumerate(alpha_carbons):
             for index2, __ in enumerate(alpha_carbons):
                 if index2 > index1:
                     svg += '''<rect x="%f" y="%f" width="%f" height="%f"
-                     style="fill: hsl(%f, 100%%, 50%%);" onhover="cellHovered(this)"/>''' % (
+                     style="fill: hsl(%f, 100%%, 50%%);" data="%s"
+                      onmouseover="cellHovered(this)" onmouseleave="cellLeft(this)" />''' % (
                       29 + (index2 * (640 / carbon_number)),
                       29 + (index1 * (640 / carbon_number)),
                       (640 / carbon_number) + 1,
                       (640 / carbon_number) + 1,
-                      120 - ((matrix[index1][index2] / 40 if matrix[index1][index2] <= 40 else 1) * 120)
+                      120 - ((matrix[index1][index2] / 40 if matrix[index1][index2] <= 40 else 1) * 120),
+                      "%s (%i) - %s (%i): %f" % (
+                       self.residues[index1].name,
+                       index1 + 1,
+                       self.residues[index2].name,
+                       index2 + 1,
+                       matrix[index1][index2]
+                      )
                      )
+
+        #Add grid lines
         res_num = 0
         while res_num <= carbon_number:
             xy = 30 + (res_num * (640 / carbon_number))
@@ -451,7 +464,9 @@ class Chain(ResiduicStructure):
             svg += '''<text x="672" y="%f" text-anchor="start">%i</text>''' % (
              xy + 5, res_num
             )
-            res_num += 40
+            res_num += 10
+
+        #Add subsequence line
         if subsequence:
             svg += '''<polygon points="0,%f, %f,%f, %f,670"
              style="stroke: blue; stroke-width: 1; fill: none;" />''' % (
@@ -460,6 +475,8 @@ class Chain(ResiduicStructure):
               30 + (subsequence[0] * (640 / carbon_number)),
               30 + (subsequence[1] * (640 / carbon_number))
             )
+
+        #Add black borders
         svg += '''<polygon points="0,0 0,700, 700,700"
          style="stroke: white; stroke-width: 0; fill: white;"/>'''
         svg += '''<polygon points="30,30 670,30, 670,670"
@@ -467,11 +484,14 @@ class Chain(ResiduicStructure):
         svg += '''<rect x="0" y="0" width="700" height="700"
          style="stroke-width: 5; stroke: black; fill: none;" />'''
 
+        #Add protein bar
         svg += '''<polygon points="348,-102.5, 352,-102.5, 352,802.5, 348,802.5"
          style="fill: hsl(80, 70%, 50%);" transform="translate(-5, 5) rotate(315 350 350)"/>'''
+
+        #Add alpha helices
         for helix in self.helices:
             start = self.residues.index(helix.residues[0])
-            end = self.residues.index(helix.residues[-1])
+            end = self.residues.index(helix.residues[-1]) + 1
             svg += '''<polygon points="347,%f, 353,%f, 353,%f, 347,%f"
              style="fill: hsl(325, 70%%, 50%%);" transform="translate(-5, 5) rotate(315 350 350)"/>''' % (
               ((((802.5 - (-102.5)) / carbon_number) * start) + (-102.5)),
@@ -479,6 +499,8 @@ class Chain(ResiduicStructure):
               ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5)),
               ((((802.5 - (-102.5)) / carbon_number) * end) + (-102.5))
              )
+
+        #Add beta sheets
         for strand in self.strands:
             start = self.residues.index(strand.residues[0])
             end = self.residues.index(strand.residues[-1]) + 1
@@ -489,7 +511,6 @@ class Chain(ResiduicStructure):
               ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5)),
               ((((802.5 - (-102.5)) / carbon_number) * end + 1) + (-102.5))
              )
-
 
         svg += '</svg>'
         return svg
