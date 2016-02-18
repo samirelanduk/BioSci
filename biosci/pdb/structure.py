@@ -388,6 +388,7 @@ class Chain(ResiduicStructure):
 
         #Get helices
         self.helices = [Helix(h, self) for h in helix_dicts]
+        self.helices = [helix for helix in self.helices if len(helix.residues)]
 
         self.strands = [] #Gets filled in later
 
@@ -550,7 +551,12 @@ class Residue(AtomicStructure):
         if ca:
             return ca[0]
         else:
-            return self.get_atoms_by_element("C")[0]
+            c = self.get_atoms_by_element("C")
+            if c:
+                return c[0]
+            else:
+                return self.atoms[0]
+
 
 
 
@@ -712,6 +718,7 @@ class Sheet(ResiduicStructure):
         self.strands = [Strand(sheet_dict["strands"][0], model)]
         for strand_dict in sheet_dict["strands"][1:]:
             self.strands.append(Strand(strand_dict, model, self.strands[-1]))
+        self.strands = [strand for strand in self.strands if len(strand.residues)]
         residues = []
         for strand in self.strands:
             residues += strand.residues
