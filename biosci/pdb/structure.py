@@ -398,7 +398,8 @@ class Chain(ResiduicStructure):
         return "<Chain %s (%i residues)>" % (self.name, len(self.residues))
 
 
-    def produce_distance_matrix_svg(self, subsequence=None, dimension=700, padding=0.05):
+    def produce_distance_matrix_svg(self, subsequence=None, dimension=700,
+     padding=0.05, close_color=120, far_color=0, angstrom_cutoff=40):
 
         #Get alpha carbons
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
@@ -427,6 +428,9 @@ class Chain(ResiduicStructure):
         bar_top = (dimension / 2) - (hypoteneuse / 2)
         bar_bottom = (dimension / 2) + (hypoteneuse / 2)
         diagonal_chunk = hypoteneuse / carbon_number
+        chain_color = 80
+        helix_color = 325
+        strand_color = 182
 
 
 
@@ -461,6 +465,16 @@ class Chain(ResiduicStructure):
         for index1, _ in enumerate(alpha_carbons):
             for index2, __ in enumerate(alpha_carbons):
                 if index2 > index1:
+                    #Calculate colour
+                    color = 0
+                    fraction = matrix[index1][index2] / angstrom_cutoff\
+                     if matrix[index1][index2] <= angstrom_cutoff else 1
+                    if far_color >= close_color:
+                        distance_from_start = fraction * (far_color - close_color)
+                        color = close_color + distance_from_start
+                    else:
+                        distance_from_start = fraction * (close_color - far_color)
+                        color = close_color - distance_from_start
                     svg += '''<rect x="%f" y="%f" width="%f" height="%f"
                      style="fill: hsl(%f, 100%%, 50%%);" data="%s"
                       onmouseover="cellHovered(this)" onmouseleave="cellLeft(this)" />''' % (
@@ -468,7 +482,7 @@ class Chain(ResiduicStructure):
                       (paddingpx - 1) + (index1 * (plot_width / carbon_number)),
                       (plot_width / carbon_number) + 1,
                       (plot_width / carbon_number) + 1,
-                      120 - ((matrix[index1][index2] / 40 if matrix[index1][index2] <= 40 else 1) * 120),
+                      color,
                       "%s (%i) - %s (%i): %f" % (
                        self.residues[index1].name,
                        index1 + 1,
@@ -517,11 +531,12 @@ class Chain(ResiduicStructure):
 
         #Add protein bar
         svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-         style="fill: hsl(80, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+         style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
           bar_left, bar_top,
           bar_right, bar_top,
           bar_right, bar_bottom,
           bar_left, bar_bottom,
+          chain_color,
           bar_width + 2, bar_width + 2,
           dimension / 2, dimension / 2
          )
@@ -531,11 +546,12 @@ class Chain(ResiduicStructure):
             start = self.residues.index(helix.residues[0])
             end = self.residues.index(helix.residues[-1]) + 1
             svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-             style="fill: hsl(325, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
               bar_left - 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * end),
               bar_left - 1, bar_top + (diagonal_chunk * end),
+              helix_color,
               bar_width + 2, bar_width + 2,
               dimension / 2, dimension / 2
              )
@@ -545,14 +561,117 @@ class Chain(ResiduicStructure):
             start = self.residues.index(strand.residues[0])
             end = self.residues.index(strand.residues[-1]) + 1
             svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-             style="fill: hsl(182, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
               bar_left - 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * end),
               bar_left - 1, bar_top + (diagonal_chunk * end),
+              strand_color,
               bar_width + 2, bar_width + 2,
               dimension / 2, dimension / 2
              )
+
+        #Add legend
+        legend_dimension = plot_width * 0.4
+        legend_left = paddingpx
+        legend_top = dimension - (paddingpx + legend_dimension)
+        legend_right = legend_left + paddingpx
+        legend_bottom = legend_top + paddingpx
+        scale_width = legend_dimension * 0.8
+        scale_height = legend_dimension * 0.1
+        scale_left = legend_left + (0.1 * legend_dimension)
+        scale_right = legend_left + (0.9 * legend_dimension)
+        scale_top = legend_top + (0.2 * legend_dimension)
+        scale_bottom = legend_top + (0.3 * legend_dimension)
+        scale_label_y = legend_top + (0.15 * legend_dimension)
+        number_label_y = legend_top + (0.38 * legend_dimension)
+        x_pixels = range(math.floor(scale_left), math.ceil(scale_right))
+
+        svg += '''<text x="%f" y="%f" text-anchor="middle"
+         style="font-size: %i;">Distance (&#8491;ngstroms)</text>''' % (
+         scale_left + (scale_width / 2),
+         scale_label_y,
+         int(scale_width / 9)
+        )
+        for x_pixel in x_pixels:
+            color = 0
+            fraction = x_pixel / scale_right
+            if far_color >= close_color:
+                distance_from_start = fraction * (far_color - close_color)
+                color = close_color + distance_from_start
+            else:
+                distance_from_start = fraction * (close_color - far_color)
+                color = close_color - distance_from_start
+            svg += '''<rect x="%f" y="%f" width="2" height="%f"
+             style="stroke-width:0;fill:hsl(%i, 70%%, 50%%);" />''' % (
+              x_pixel - 1, scale_top, scale_bottom - scale_top, color
+             )
+        svg += '''<text x="%f" y="%f" text-anchor="middle"
+         style="font-size: %i;">0</text>''' % (
+         scale_left,
+         number_label_y,
+         int(scale_width / 10)
+        )
+        svg += '''<text x="%f" y="%f" text-anchor="middle"
+         style="font-size: %i;">%i+</text>''' % (
+         scale_right,
+         number_label_y,
+         int(scale_width / 10),
+         angstrom_cutoff
+        )
+
+        helix_top = legend_top + (0.5 * legend_dimension)
+        hexlix_bottom = legend_top + (0.6 * legend_dimension)
+        helix_width = legend_dimension * 0.4
+        helix_left = scale_left
+        helix_right = paddingpx + (legend_dimension / 2)
+        strand_top = legend_top + (0.7 * legend_dimension)
+        strand_bottom = legend_top + (0.8 * legend_dimension)
+
+        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+         style="fill: hsl(%i, 70%%, 50%%);" />''' % (
+          helix_left,
+          ((hexlix_bottom + helix_top) / 2) - ((bar_width / 2) + 0),
+          helix_width,
+          bar_width,
+          chain_color
+         )
+        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+         style="fill: hsl(%i, 70%%, 50%%);" />''' % (
+          helix_left + (0.1 * helix_width),
+          ((hexlix_bottom + helix_top) / 2) - ((bar_width / 2) + 1),
+          helix_width * 0.8,
+          bar_width + 2,
+          helix_color
+         )
+        svg += '''<text x="%f" y="%f" text-anchor="start" alignment-baseline="middle"
+         style="font-size: %i;">&#945;-helix</text>''' % (
+         helix_right + (legend_dimension * 0.1),
+         ((hexlix_bottom + helix_top) / 2),
+         int(scale_width / 10)
+        )
+        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+         style="fill: hsl(%i, 70%%, 50%%);" />''' % (
+          helix_left,
+          ((strand_bottom + strand_top) / 2) - ((bar_width / 2) + 0),
+          helix_width,
+          bar_width,
+          chain_color
+         )
+        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+         style="fill: hsl(%i, 70%%, 50%%);" />''' % (
+          helix_left + (0.1 * helix_width),
+          ((strand_bottom + strand_top) / 2) - ((bar_width / 2) + 1),
+          helix_width * 0.8,
+          bar_width + 2,
+          strand_color
+         )
+        svg += '''<text x="%f" y="%f" text-anchor="start" alignment-baseline="middle"
+         style="font-size: %i;">&#946;-sheet</text>''' % (
+         helix_right + (legend_dimension * 0.1),
+         ((strand_bottom + strand_top) / 2),
+         int(scale_width / 10)
+        )
 
         #Add black borders
         svg += '''<polygon points="%f,%f %f,%f, %f,%f"
