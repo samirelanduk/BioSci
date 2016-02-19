@@ -3,7 +3,7 @@ import subprocess
 
 PYMOL_LOCATION = None
 
-def run_pymol(path="", command_line=False, orders=[]):
+def run_pymol(path="", command_line=False, orders=[], output=False):
     #Try to find pymol
     pymol = ""
     if PYMOL_LOCATION:
@@ -26,8 +26,10 @@ def run_pymol(path="", command_line=False, orders=[]):
         if command_line:
             command += "cq"
         if orders:
-            command += 'd "%s"' %  ";".join(orders)
-        print(command)
+            command += 'd "%s"' %  "; ".join(orders)
+        if not output:
+            command += " > /dev/null 2>&1"
+        if output: print(command)
         subprocess.call(command, shell=True)
     else:
         print("Don't know where Pymol is - please set PYMOL_LOCATION first.")

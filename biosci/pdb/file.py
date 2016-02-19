@@ -17,6 +17,7 @@ class PdbFile:
     """A representation of the PDB file itself, not the structure it represents."""
 
     def __init__(self, pdb_contents):
+        self.pdb_contents = pdb_contents
         lines = [line for line in pdb_contents.split("\n") if line.strip()]
         self.records = [Record(index, line) for index, line in enumerate(lines, start=1)]
 

@@ -155,6 +155,11 @@ class AtomicStructure:
         return distance
 
 
+    def get_pymol_selector_string(self):
+        s = ["id %i" % a.number for a in self.atoms]
+        return " | ".join(s)
+
+
 
 
 
@@ -211,6 +216,16 @@ class ResiduicStructure(AtomicStructure):
                 )
         else:
             return self
+
+
+    def get_pymol_selector_string(self):
+        s = []
+        for residue in self.residues:
+            s.append(
+             "(resi %i & chain %s)" % (residue.number, residue.chain.name)
+            )
+
+        return " | ".join(s)
 
 
 
