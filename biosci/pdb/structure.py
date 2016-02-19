@@ -432,10 +432,6 @@ class Chain(ResiduicStructure):
         helix_color = 325
         strand_color = 182
 
-
-
-
-
         #Calculate distances
         matrix = []
         for _ in alpha_carbons:
