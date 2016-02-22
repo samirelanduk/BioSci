@@ -414,7 +414,7 @@ class Chain(ResiduicStructure):
 
 
     def produce_distance_matrix_svg(self, subsequence=None, dimension=700,
-     padding=0.05, close_color=120, far_color=0, angstrom_cutoff=40):
+     padding=0.05, close_color=120, far_color=0, angstrom_cutoff=40, as_html=False):
 
         #Get alpha carbons
         alpha_carbons = [r.get_alpha_carbon() for r in self.residues]
@@ -468,7 +468,7 @@ class Chain(ResiduicStructure):
         #Start SVG
         svg = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
          <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-          <svg width="%f" height="%f" xmlns="http://www.w3.org/2000/svg">''' % (
+          <svg width="%.1f" height="%.1f" xmlns="http://www.w3.org/2000/svg">''' % (
            dimension, dimension
           )
 
@@ -486,46 +486,46 @@ class Chain(ResiduicStructure):
                     else:
                         distance_from_start = fraction * (close_color - far_color)
                         color = close_color - distance_from_start
-                    svg += '''<rect x="%f" y="%f" width="%f" height="%f"
-                     style="fill: hsl(%f, 100%%, 50%%);" data="%s"
-                      onmouseover="cellHovered(this)" onmouseleave="cellLeft(this)" />''' % (
+                    svg += '''<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"
+                     style="fill: hsl(%.1f, 100%%, 50%%);" data="%s" %s" />''' % (
                       (paddingpx - 1) + (index2 * (plot_width / carbon_number)),
                       (paddingpx - 1) + (index1 * (plot_width / carbon_number)),
                       (plot_width / carbon_number) + 1,
                       (plot_width / carbon_number) + 1,
                       color,
-                      "%s (%i) - %s (%i): %f" % (
+                      "%s (%i) - %s (%i): %.1f &#8491;" % (
                        self.residues[index1].name,
                        index1 + 1,
                        self.residues[index2].name,
                        index2 + 1,
                        matrix[index1][index2]
-                      )
+                      ),
+                      'onmouseover="cellHovered(this)" onmouseleave="cellLeft(this)' if as_html else ""
                      )
 
         #Add grid lines
         res_num = 0
         while res_num <= carbon_number:
             xy = paddingpx + (res_num * (plot_width / carbon_number))
-            svg += '''<line x1="%f" y1="%f" x2="%f" y2="%f"
+            svg += '''<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"
              style="stroke: black; stroke-width: 1;" />''' % (
               xy, paddingpx, xy, dimension - paddingpx
              )
-            svg += '''<text x="%f" y="%f" text-anchor="middle">%i</text>''' % (
+            svg += '''<text x="%.1f" y="%.1f" text-anchor="middle">%i</text>''' % (
              xy, top_text_y, res_num
             )
-            svg += '''<line x1="%f" y1="%f" x2="%f" y2="%f"
+            svg += '''<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"
              style="stroke: black; stroke-width: 1;" />''' % (
               paddingpx, xy, dimension - paddingpx, xy
             )
-            svg += '''<text x="%f" y="%f" text-anchor="start">%i</text>''' % (
+            svg += '''<text x="%.1f" y="%.1f" text-anchor="start">%i</text>''' % (
              right_text_x, xy + 5, res_num
             )
             res_num += tick
 
         #Add subsequence line
         if subsequence:
-            svg += '''<polygon points="0,%f, %f,%f, %f,%i"
+            svg += '''<polygon points="0,%.1f, %.1f,%.1f, %.1f,%i"
              style="stroke: blue; stroke-width: 1; fill: none;" />''' % (
               paddingpx + (subsequence[0] * (plot_width / carbon_number)),
               paddingpx + (subsequence[1] * (plot_width / carbon_number)),
@@ -541,8 +541,8 @@ class Chain(ResiduicStructure):
          )
 
         #Add protein bar
-        svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-         style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+        svg += '''<polygon points="%.1f,%.1f, %.1f,%.1f, %.1f,%.1f, %.1f,%.1f"
+         style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%.1f, %.1f) rotate(315 %.1f %.1f)"/>''' % (
           bar_left, bar_top,
           bar_right, bar_top,
           bar_right, bar_bottom,
@@ -556,8 +556,8 @@ class Chain(ResiduicStructure):
         for helix in self.helices:
             start = self.residues.index(helix.residues[0])
             end = self.residues.index(helix.residues[-1]) + 1
-            svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+            svg += '''<polygon points="%.1f,%.1f, %.1f,%.1f, %.1f,%.1f, %.1f,%.1f"
+             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%.1f, %.1f) rotate(315 %.1f %.1f)"/>''' % (
               bar_left - 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * end),
@@ -571,8 +571,8 @@ class Chain(ResiduicStructure):
         for strand in self.strands:
             start = self.residues.index(strand.residues[0])
             end = self.residues.index(strand.residues[-1]) + 1
-            svg += '''<polygon points="%f,%f, %f,%f, %f,%f, %f,%f"
-             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%f, %f) rotate(315 %f %f)"/>''' % (
+            svg += '''<polygon points="%.1f,%.1f, %.1f,%.1f, %.1f,%.1f, %.1f,%.1f"
+             style="fill: hsl(%i, 70%%, 50%%);" transform="translate(-%.1f, %.1f) rotate(315 %.1f %.1f)"/>''' % (
               bar_left - 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * start),
               bar_right + 1, bar_top + (diagonal_chunk * end),
@@ -598,7 +598,7 @@ class Chain(ResiduicStructure):
         number_label_y = legend_top + (0.38 * legend_dimension)
         x_pixels = range(math.floor(scale_left), math.ceil(scale_right))
 
-        svg += '''<text x="%f" y="%f" text-anchor="middle"
+        svg += '''<text x="%.1f" y="%.1f" text-anchor="middle"
          style="font-size: %i;">Distance (&#8491;ngstroms)</text>''' % (
          scale_left + (scale_width / 2),
          scale_label_y,
@@ -613,17 +613,17 @@ class Chain(ResiduicStructure):
             else:
                 distance_from_start = fraction * (close_color - far_color)
                 color = close_color - distance_from_start
-            svg += '''<rect x="%f" y="%f" width="2" height="%f"
+            svg += '''<rect x="%.1f" y="%.1f" width="2" height="%.1f"
              style="stroke-width:0;fill:hsl(%i, 70%%, 50%%);" />''' % (
               x_pixel - 1, scale_top, scale_bottom - scale_top, color
              )
-        svg += '''<text x="%f" y="%f" text-anchor="middle"
+        svg += '''<text x="%.1f" y="%.1f" text-anchor="middle"
          style="font-size: %i;">0</text>''' % (
          scale_left,
          number_label_y,
          int(scale_width / 10)
         )
-        svg += '''<text x="%f" y="%f" text-anchor="middle"
+        svg += '''<text x="%.1f" y="%.1f" text-anchor="middle"
          style="font-size: %i;">%i+</text>''' % (
          scale_right,
          number_label_y,
@@ -639,7 +639,7 @@ class Chain(ResiduicStructure):
         strand_top = legend_top + (0.7 * legend_dimension)
         strand_bottom = legend_top + (0.8 * legend_dimension)
 
-        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+        svg += '''<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"
          style="fill: hsl(%i, 70%%, 50%%);" />''' % (
           helix_left,
           ((hexlix_bottom + helix_top) / 2) - ((bar_width / 2) + 0),
@@ -647,7 +647,7 @@ class Chain(ResiduicStructure):
           bar_width,
           chain_color
          )
-        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+        svg += '''<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"
          style="fill: hsl(%i, 70%%, 50%%);" />''' % (
           helix_left + (0.1 * helix_width),
           ((hexlix_bottom + helix_top) / 2) - ((bar_width / 2) + 1),
@@ -655,13 +655,13 @@ class Chain(ResiduicStructure):
           bar_width + 2,
           helix_color
          )
-        svg += '''<text x="%f" y="%f" text-anchor="start" alignment-baseline="middle"
+        svg += '''<text x="%.1f" y="%.1f" text-anchor="start" alignment-baseline="middle"
          style="font-size: %i;">&#945;-helix</text>''' % (
          helix_right + (legend_dimension * 0.1),
          ((hexlix_bottom + helix_top) / 2),
          int(scale_width / 10)
         )
-        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+        svg += '''<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"
          style="fill: hsl(%i, 70%%, 50%%);" />''' % (
           helix_left,
           ((strand_bottom + strand_top) / 2) - ((bar_width / 2) + 0),
@@ -669,7 +669,7 @@ class Chain(ResiduicStructure):
           bar_width,
           chain_color
          )
-        svg += '''<rect x="%f" y="%f" width="%f" height="%f"
+        svg += '''<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f"
          style="fill: hsl(%i, 70%%, 50%%);" />''' % (
           helix_left + (0.1 * helix_width),
           ((strand_bottom + strand_top) / 2) - ((bar_width / 2) + 1),
@@ -677,7 +677,7 @@ class Chain(ResiduicStructure):
           bar_width + 2,
           strand_color
          )
-        svg += '''<text x="%f" y="%f" text-anchor="start" alignment-baseline="middle"
+        svg += '''<text x="%.1f" y="%.1f" text-anchor="start" alignment-baseline="middle"
          style="font-size: %i;">&#946;-sheet</text>''' % (
          helix_right + (legend_dimension * 0.1),
          ((strand_bottom + strand_top) / 2),
@@ -685,7 +685,7 @@ class Chain(ResiduicStructure):
         )
 
         #Add black borders
-        svg += '''<polygon points="%f,%f %f,%f, %f,%f"
+        svg += '''<polygon points="%.1f,%.1f %.1f,%.1f, %.1f,%.1f"
          style="stroke: black; stroke-width: 2; fill: none;"/>''' % (
           paddingpx, paddingpx,
           dimension - paddingpx, paddingpx,
@@ -697,7 +697,32 @@ class Chain(ResiduicStructure):
          )
 
         svg += '</svg>'
-        return svg
+        if as_html:
+            return '''<html>
+             <head>
+             <title>Distance Matrix</title>
+             </head>
+             <style>
+             svg {display:block;margin-left:auto;margin-right:auto;}
+             #matrixtext {height: 30px;font-family:'Courier New';text-align:center;}
+             </style>
+             <body>
+             <div id="matrixtext">
+
+             </div>
+             <script>
+			 function cellHovered(cell) {
+		     document.getElementById("matrixtext").innerHTML = cell.attributes.data.value;
+			 }
+			 function cellLeft(cell) {
+			 document.getElementById("matrixtext").innerHTML = "";
+			 }
+    		</script>
+            %s
+            </body>
+            </html>''' % svg
+        else:
+            return svg
 
 
 
